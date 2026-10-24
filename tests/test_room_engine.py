@@ -239,7 +239,7 @@ print(json.dumps({{'bytes':p.read_text(),'inode':p.stat().st_ino,'writable':writ
 
     def test_private_xwayland_starts_without_host_x11_access(self):
         if not os.environ.get('WAYLAND_DISPLAY') or not shutil.which('Xwayland'): self.skipTest('Wayland/Xwayland unavailable')
-        root = self.start('display', display='nested-x11')
+        root = self.start('display', display='nested-x11', screen={'fullscreen':False,'width':800,'height':600})
         details = json.loads(self.run_in(root,"import os,json,pathlib; print(json.dumps({'display':os.environ.get('DISPLAY'),'xauth':os.environ.get('XAUTHORITY'),'socket':pathlib.Path('/tmp/.X11-unix/X0').exists()}))"))
         self.assertEqual(details,{'display':':0','xauth':None,'socket':True})
 
@@ -249,6 +249,13 @@ print(json.dumps({{'bytes':p.read_text(),'inode':p.stat().st_ino,'writable':writ
         root = self.start('screen', display='nested-x11', screen={'fullscreen':False,'width':1024,'height':640})
         size = self.run_in(root,"import ctypes; x=ctypes.CDLL('libX11.so.6'); x.XOpenDisplay.restype=ctypes.c_void_p; x.XDisplayWidth.argtypes=x.XDisplayHeight.argtypes=[ctypes.c_void_p,ctypes.c_int]; d=x.XOpenDisplay(None); print(x.XDisplayWidth(d,0), x.XDisplayHeight(d,0))")
         self.assertEqual(size.split(), ['1024','640'])
+
+    def test_closing_the_display_ends_the_room(self):
+        # A room without its display cannot run apps; it must exit so the launcher opens a new one.
+        if not os.environ.get('WAYLAND_DISPLAY') or not shutil.which('Xwayland'): self.skipTest('Wayland/Xwayland unavailable')
+        root = self.start('closed', display='nested-x11', screen={'fullscreen':False,'width':800,'height':600})
+        self.run_in(root,"import os,pathlib,signal; [os.kill(int(p.name),signal.SIGTERM) for p in pathlib.Path('/proc').iterdir() if p.name.isdecimal() and (p/'comm').read_text().strip()=='Xwayland']")
+        self.assertIsNotNone(self.processes[-1].wait(timeout=10))
 
     @unittest.skipUnless(os.environ.get('RESPAWN_TEST_WINE') == '1', 'set RESPAWN_TEST_WINE=1 for real Wine smoke tests')
     def test_real_wine_console_in_an_isolated_prefix(self):

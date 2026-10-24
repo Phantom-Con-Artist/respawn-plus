@@ -69,12 +69,24 @@ async fn save_game(
         .map_err(|e| e.to_string())?
 }
 
+/// Physical size of the monitor showing the launcher, from whatever windowing system hosts it.
+fn monitor_size(window: &tauri::Window) -> Option<(u32, u32)> {
+    let monitor = window
+        .current_monitor()
+        .ok()
+        .flatten()
+        .or_else(|| window.primary_monitor().ok().flatten())?;
+    Some((monitor.size().width, monitor.size().height))
+}
+
 #[tauri::command]
 async fn launch_game(
     service: tauri::State<'_, Arc<library::Launcher>>,
+    window: tauri::Window,
     game_id: i64,
 ) -> Result<library::Launch, String> {
     let service = service.inner().clone();
+    service.set_monitor(monitor_size(&window))?;
     tauri::async_runtime::spawn_blocking(move || service.launch(game_id))
         .await
         .map_err(|e| e.to_string())?
@@ -172,9 +184,11 @@ async fn save_tool(
 #[tauri::command]
 async fn launch_tool(
     service: tauri::State<'_, Arc<library::Launcher>>,
+    window: tauri::Window,
     tool_id: i64,
 ) -> Result<library::Launch, String> {
     let service = service.inner().clone();
+    service.set_monitor(monitor_size(&window))?;
     tauri::async_runtime::spawn_blocking(move || service.launch_tool(tool_id))
         .await
         .map_err(|e| e.to_string())?

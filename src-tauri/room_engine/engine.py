@@ -423,14 +423,19 @@ def supervise(config):
     if config['display'] == 'nested-x11':
         Path('/tmp/.X11-unix').mkdir(mode=0o700, exist_ok=True)
         # The X screen must be at least the game's resolution, or the area outside it is never redrawn.
-        screen = config.get('screen') or {}
-        size = ['-fullscreen'] if screen.get('fullscreen') else ['-geometry', f"{int(screen.get('width', 1280))}x{int(screen.get('height', 800))}", '-decorate']
-        children.append(subprocess.Popen(['/usr/bin/Xwayland', ':0', '-nolisten', 'tcp', '-ac', *size], stdin=subprocess.DEVNULL))
+        # Without -geometry, a fullscreen rootful Xwayland is 640x480 stretched over the monitor.
+        screen = config.get('screen') or fail('Room display size is missing')
+        size = ['-geometry', f"{int(screen['width'])}x{int(screen['height'])}", '-fullscreen' if screen['fullscreen'] else '-decorate']
+        display = subprocess.Popen(['/usr/bin/Xwayland', ':0', '-nolisten', 'tcp', '-ac', *size], stdin=subprocess.DEVNULL)
+        children.append(display)
         deadline = time.monotonic() + 15
         while not Path('/tmp/.X11-unix/X0').exists():
             if children[-1].poll() is not None or time.monotonic() > deadline: fail('Private Xwayland display could not start')
             time.sleep(0.05)
         os.environ['DISPLAY'] = ':0'
+        # Closing the display window ends the room; a room without its display cannot run apps,
+        # and the launcher opens a fresh room when this one has exited.
+        threading.Thread(target=lambda: (display.wait(), os._exit(0)), daemon=True).start()
     if config.get('bootstrap'):
         result = subprocess.run(config['bootstrap'], stdin=subprocess.DEVNULL)
         if result.returncode: return result.returncode

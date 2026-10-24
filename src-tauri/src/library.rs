@@ -363,6 +363,12 @@ impl Launcher {
         Ok(())
     }
 
+    /// Records the monitor the launcher is on; rooms size their display from it when a game has
+    /// no resolution of its own.
+    pub fn set_monitor(&self, size: Option<(u32, u32)>) -> Result<(), String> {
+        self.rooms.set_monitor(size)
+    }
+
     /// Play: the game itself, or the companion app chosen to start it (such as a mod manager).
     pub fn launch(&self, id: i64) -> Result<Launch, String> {
         let via = self
