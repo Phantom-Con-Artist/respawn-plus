@@ -1,22 +1,85 @@
 // SPDX-License-Identifier: MIT
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
+import { getCurrentWindow } from '@tauri-apps/api/window';
+import '@fontsource-variable/geist';
+import '@fontsource-variable/geist-mono';
 import './styles.css';
+import { voxelMark } from './brand.js';
 
 const $ = (selector) => document.querySelector(selector);
-let games = [], runtimes = [], selectedId = null, filter = 'all', dirty = false;
-let selectedFormId = null, busy = false, refreshing = false, ready = false;
-let detailTab = 'game', editingToolId = null, toolGameId = null, removingToolId = null, logTarget = null;
+for (const slot of document.querySelectorAll('[data-voxel-mark]')) slot.innerHTML = voxelMark;
 
+// Theme: an explicit choice is remembered per machine; otherwise follow the system.
+const systemDark = matchMedia('(prefers-color-scheme: dark)');
+function storedTheme() { try { return localStorage.getItem('respawn-theme'); } catch { return null; } }
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  $('#theme-toggle').setAttribute('aria-label', 'Switch to ' + (theme === 'dark' ? 'light' : 'dark') + ' theme');
+}
+applyTheme(storedTheme() || (systemDark.matches ? 'dark' : 'light'));
+systemDark.addEventListener('change', (event) => { if (!storedTheme()) applyTheme(event.matches ? 'dark' : 'light'); });
+$('#theme-toggle').addEventListener('click', () => {
+  const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  try { localStorage.setItem('respawn-theme', next); } catch { /* theme still applies for this session */ }
+  applyTheme(next);
+});
+
+// Window controls live in the app's own title bar (decorations are off).
+const appWindow = (() => { try { return getCurrentWindow(); } catch { return null; } })();
+async function syncMaximized() {
+  const maximized = await appWindow?.isMaximized().catch(() => false);
+  document.documentElement.dataset.maximized = String(!!maximized);
+  $('#win-max').setAttribute('aria-label', maximized ? 'Restore' : 'Maximize');
+}
+$('#win-min').addEventListener('click', () => appWindow?.minimize());
+$('#win-max').addEventListener('click', () => appWindow?.toggleMaximize());
+$('#win-close').addEventListener('click', () => appWindow?.close());
+appWindow?.onResized(syncMaximized).catch(() => {});
+syncMaximized();
+
+let games = [], runtimes = [], filter = 'all', dirty = false;
+let view = { name: 'home', id: null };
+let selectedFormId = null, busy = false, refreshing = false, ready = false;
+let detailTab = 'overview', editingToolId = null, toolGameId = null, removingToolId = null, logTarget = null;
+
+// ---------- Formatting ----------
 function message(text, error = false) {
   $('#message').textContent = text;
   $('#message').hidden = !text;
   $('#message').dataset.error = String(error);
 }
-function current() { return games.find((g) => g.id === selectedId); }
-function running(game) { return game.launch?.state === 'running'; }
+// SQLite CURRENT_TIMESTAMP values are UTC without a zone marker.
+function parseTime(value) { return value ? new Date(value.replace(' ', 'T') + 'Z') : null; }
+function duration(seconds) {
+  if (seconds == null) return '—';
+  if (seconds < 60) return '<1 m';
+  const hours = Math.floor(seconds / 3600), minutes = Math.round((seconds % 3600) / 60);
+  return hours ? hours + ' h' + (minutes ? ' ' + minutes + ' m' : '') : minutes + ' m';
+}
+function relative(value) {
+  const date = parseTime(value);
+  if (!date) return 'Never';
+  const minutes = Math.round((Date.now() - date) / 60000);
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return minutes + ' min ago';
+  if (minutes < 24 * 60) return Math.round(minutes / 60) + ' h ago';
+  if (minutes < 48 * 60) return 'Yesterday';
+  return date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: date.getFullYear() === new Date().getFullYear() ? undefined : 'numeric' });
+}
+function clock(value) { return parseTime(value)?.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) ?? ''; }
+const MODE_NAMES = { default: 'Game default', fullscreen: 'Fullscreen', borderless: 'Borderless', windowed: 'Windowed' };
+function displayLabel(game) {
+  if (!game.display_supported) return 'In-game setting';
+  return MODE_NAMES[game.display_mode] + (game.display_mode !== 'default' && game.display_width ? ' · ' + game.display_width + '×' + game.display_height : '');
+}
+
+// ---------- Game state ----------
+function current() { return view.name === 'game' ? games.find((g) => g.id === view.id) : undefined; }
+function running(item) { return item.launch?.state === 'running'; }
 function gameSessionRunning(game) { return running(game) || (game.tools || []).some((tool) => tool.kind === 'script_extender' && running(tool)); }
 function environmentBusy(game) { return running(game) || (game.tools || []).some(running); }
+function canPlay(game) { return !busy && !dirty && !gameSessionRunning(game) && game.available && !!game.runtime_path; }
 function gameStatus(game) {
   if (!game.available) return 'Executable missing';
   if (gameSessionRunning(game)) return 'Running';
@@ -38,16 +101,110 @@ function artwork(game) {
   if (executable.endsWith('/mines.exe')) return { src: '/artwork/mines.png', kind: 'screenshot', credit: 'Simon Tatham’s Portable Puzzles' };
   return null;
 }
-function selectGame(id, openDetail = true) {
-  if (dirty && selectedId !== id) {
-    message('Save your launch settings before choosing another game.', true);
-    return;
+// Artwork with a voxel fallback that shows the game's name if the image is missing or fails.
+function artNode(game, className) {
+  const art = artwork(game);
+  const frame = element('div', undefined, className);
+  const fallback = element('span', game.name, 'cover-fallback');
+  if (art) {
+    const image = element('img');
+    image.src = art.src; image.alt = ''; image.className = art.kind; image.referrerPolicy = 'no-referrer';
+    image.addEventListener('error', () => { image.remove(); fallback.hidden = false; });
+    fallback.hidden = true; frame.append(image);
+    frame.title = 'Artwork: ' + art.credit;
   }
-  selectedId = id;
-  if (openDetail) document.body.dataset.detailOpen = 'true';
-  render();
+  frame.append(fallback);
+  return frame;
 }
-function renderList() {
+function playButton(game, className = 'row-play') {
+  const play = element('button', gameSessionRunning(game) ? 'Running' : 'Play', className);
+  play.setAttribute('aria-label', (gameSessionRunning(game) ? game.name + ' is running' : 'Play ' + game.name));
+  play.disabled = !canPlay(game);
+  play.addEventListener('click', (event) => { event.stopPropagation(); playGame(game.id); });
+  return play;
+}
+function gameCard(game, index) {
+  const card = element('article', undefined, 'game-card');
+  card.style.setProperty('--i', index);
+  card.dataset.featured = String(artwork(game)?.kind === 'landscape');
+  card.dataset.running = String(environmentBusy(game));
+  const open = element('a', undefined, 'game-open');
+  open.href = '#/game/' + game.id;
+  open.setAttribute('aria-label', game.name + ' details');
+  const info = element('div', undefined, 'game-info');
+  info.append(element('strong', game.name), element('span', gameStatus(game), environmentBusy(game) ? 'status running' : 'status'));
+  open.append(artNode(game, 'game-art'), info);
+  const footer = element('div', undefined, 'game-card-footer');
+  footer.append(element('span', game.play_seconds ? duration(game.play_seconds) + ' played' : 'Not played yet', 'card-meta'), playButton(game));
+  card.append(open, footer);
+  return card;
+}
+
+// ---------- Rendering ----------
+function renderShell() {
+  const game = current();
+  $('#crumbs').textContent = ['RESPAWN+', view.name === 'game' ? 'LIBRARY' : view.name.toUpperCase(), game?.name.toUpperCase()].filter(Boolean).join(' // ');
+  for (const link of document.querySelectorAll('[data-nav]')) {
+    const active = link.dataset.nav === view.name || (view.name === 'game' && link.dataset.nav === 'library');
+    if (active) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
+  }
+  $('#nav-count').textContent = games.length || '';
+  const list = $('#running-list'); list.replaceChildren();
+  const active = games.filter(environmentBusy);
+  if (!active.length) list.append(element('li', 'Nothing running', 'muted'));
+  for (const game of active) {
+    const item = element('li'); const link = element('a', game.name); link.href = '#/game/' + game.id;
+    const apps = (game.tools || []).filter(running).map((t) => t.name);
+    item.append(link, element('span', apps.length ? apps.join(' · ') : 'Game', 'running-apps')); list.append(item);
+  }
+  for (const name of ['home', 'library', 'game']) $('#view-' + name).hidden = view.name !== name;
+}
+function sessionItem(session, game) {
+  const item = element('li', undefined, 'session');
+  const live = session.state === 'running' || session.state === 'starting';
+  item.dataset.live = String(live);
+  const head = element('div', undefined, 'session-head');
+  if (game) { const link = element('a', game.name, 'session-game'); link.href = '#/game/' + game.id; head.append(link); }
+  head.append(element('span', live ? 'Playing now' : session.seconds == null ? 'Duration unknown' : duration(session.seconds), 'session-duration'));
+  item.append(head, element('span', clock(session.started_at) + (session.via ? ' · ' + session.via : ''), 'session-when'));
+  return item;
+}
+function renderHome() {
+  const played = games.filter((g) => g.last_played_at).sort((a, b) => b.last_played_at.localeCompare(a.last_played_at));
+  const hero = games.find(gameSessionRunning) || played[0] || games[0];
+  const art = $('#continue-art'); art.replaceChildren();
+  $('#continue').dataset.empty = String(!hero);
+  if (hero) {
+    art.append(artNode(hero, 'continue-image'));
+    $('#continue-eyebrow').textContent = gameSessionRunning(hero) ? 'Playing now' : hero.last_played_at ? 'Continue playing' : 'Ready when you are';
+    $('#home-title').textContent = hero.name;
+    const last = hero.sessions?.[0];
+    $('#continue-meta').textContent = [hero.last_played_at ? 'Last played ' + relative(hero.last_played_at).toLowerCase() : 'Not played yet',
+      last?.seconds != null ? 'last session ' + duration(last.seconds) : null, hero.play_seconds ? duration(hero.play_seconds) + ' total' : null].filter(Boolean).join(' · ');
+    $('#continue-play').textContent = gameSessionRunning(hero) ? 'Running' : 'Play';
+    $('#continue-play').disabled = !canPlay(hero);
+    $('#continue-play').dataset.gameId = hero.id;
+    $('#continue-details').textContent = 'Game details'; $('#continue-details').href = '#/game/' + hero.id;
+  } else {
+    $('#continue-eyebrow').textContent = 'Welcome';
+    $('#home-title').textContent = 'Build your library.';
+    $('#continue-meta').textContent = 'Find installed Windows games or add an executable. Each game gets its own environment on this machine.';
+    $('#continue-play').disabled = true; $('#continue-details').textContent = 'Open library'; $('#continue-details').href = '#/library';
+  }
+  $('#stat-playtime').textContent = duration(games.reduce((sum, g) => sum + (g.play_seconds || 0), 0));
+  $('#stat-games').textContent = String(games.length);
+  $('#stat-running').textContent = String(games.filter(environmentBusy).length);
+  $('#stat-tools').textContent = String(games.reduce((sum, g) => sum + (g.tools || []).length, 0));
+  const recent = $('#recent-list'); recent.replaceChildren();
+  const row = (played.length ? played : games).slice(0, 4);
+  if (!row.length) recent.append(element('p', 'Games you play show up here.', 'empty'));
+  row.forEach((game, i) => recent.append(gameCard(game, i)));
+  const sessions = games.flatMap((g) => (g.sessions || []).map((s) => [s, g])).sort((a, b) => b[0].started_at.localeCompare(a[0].started_at)).slice(0, 7);
+  const timeline = $('#session-list'); timeline.replaceChildren();
+  if (!sessions.length) timeline.append(element('li', 'No sessions yet. Press Play on any game.', 'empty'));
+  for (const [session, game] of sessions) timeline.append(sessionItem(session, game));
+}
+function renderLibrary() {
   const query = $('#search').value.toLocaleLowerCase();
   const shown = games.filter((g) => (filter !== 'running' || environmentBusy(g)) && g.name.toLocaleLowerCase().includes(query));
   $('#library-summary').textContent = games.length + (games.length === 1 ? ' game' : ' games') + ' in your library';
@@ -59,38 +216,7 @@ function renderList() {
     list.append(element('p', games.length ? 'No games match this view.' : 'Your library is empty. Find games or add a Windows executable.', 'empty'));
     return;
   }
-  for (const game of shown) {
-    const art = artwork(game);
-    const row = element('article', undefined, 'game-card');
-    row.dataset.selected = String(game.id === selectedId);
-    row.dataset.featured = String(art?.kind === 'landscape');
-    const select = element('button', undefined, 'game-select');
-    select.setAttribute('aria-label', 'Select ' + game.name);
-    select.setAttribute('aria-pressed', String(game.id === selectedId));
-    const cover = element('div', undefined, 'game-art');
-    const fallback = element('span', game.name, 'cover-fallback');
-    if (art) {
-      const image = element('img');
-      image.src = art.src; image.alt = game.name + (art.kind === 'screenshot' ? ' gameplay screenshot' : ' game artwork');
-      image.className = art.kind; image.referrerPolicy = 'no-referrer';
-      image.addEventListener('error', () => { image.hidden = true; fallback.hidden = false; });
-      fallback.hidden = true; cover.append(image);
-    }
-    cover.append(fallback);
-    const info = element('div', undefined, 'game-info');
-    info.append(element('strong', game.name), element('span', gameStatus(game), environmentBusy(game) ? 'status running' : 'status'));
-    select.append(cover, info);
-    select.addEventListener('click', () => selectGame(game.id));
-    const play = element('button', gameSessionRunning(game) ? 'Running' : 'Play', 'row-play');
-    play.setAttribute('aria-label', 'Play ' + game.name);
-    play.disabled = busy || gameSessionRunning(game) || !game.available || !game.runtime_path || dirty;
-    play.addEventListener('click', () => playGame(game.id));
-    const footer = element('div', undefined, 'game-card-footer');
-    const source = element('span', 'Windows · ' + (game.runtime_kind === 'proton' ? 'Proton' : 'Wine'), 'card-platform');
-    if (art) source.title = 'Artwork: ' + art.credit;
-    footer.append(source, play);
-    row.append(select, footer); list.append(row);
-  }
+  shown.forEach((game, i) => list.append(gameCard(game, i)));
 }
 function renderRuntimes() {
   $('#runtime-count').textContent = '(' + runtimes.length + ')';
@@ -102,15 +228,13 @@ function renderRuntimes() {
   }
   if (!runtimes.length) list.append(element('li', 'No installed runtimes found. Add a custom runner in launch settings.'));
 }
+function screenSize() { return [Math.round(screen.width * devicePixelRatio), Math.round(screen.height * devicePixelRatio)]; }
 function populateSettings(game) {
   selectedFormId = game.id;
   $('#game-name').value = game.name;
   const select = $('#runtime-choice'); select.replaceChildren();
   select.append(new Option('Choose a runtime', ''));
-  for (const runtime of runtimes.filter((r) => r.kind !== 'umu')) {
-    const option = new Option(runtime.name + ' · ' + runtime.kind, runtime.kind + '|' + runtime.path);
-    select.append(option);
-  }
+  for (const runtime of runtimes.filter((r) => r.kind !== 'umu')) select.append(new Option(runtime.name + ' · ' + runtime.kind, runtime.kind + '|' + runtime.path));
   select.append(new Option('Custom runtime…', 'custom'));
   const value = game.runtime_kind + '|' + game.runtime_path;
   select.value = [...select.options].some((o) => o.value === value) ? value : (game.runtime_path ? 'custom' : '');
@@ -118,32 +242,55 @@ function populateSettings(game) {
   $('#custom-runtime-path').value = game.runtime_path;
   $('#custom-runtime').hidden = select.value !== 'custom';
   $('#argument-lines').value = game.arguments.join('\n');
+  for (const radio of document.querySelectorAll('[name="display-mode"]')) radio.checked = radio.value === game.display_mode;
+  const [width, height] = screenSize();
+  $('#display-width').value = game.display_width ?? width;
+  $('#display-height').value = game.display_height ?? height;
 }
-function renderDetail() {
+function displayMode() { return document.querySelector('[name="display-mode"]:checked')?.value || 'default'; }
+function renderGame() {
   const game = current();
-  $('#detail-empty').hidden = !!game;
-  $('#detail-content').hidden = !game;
-  $('#play').disabled = !game || busy || dirty || gameSessionRunning(game) || !game.available || !game.runtime_path;
   if (!game) return;
-  $('#detail-game').setAttribute('aria-pressed', String(detailTab === 'game'));
-  $('#detail-tools').setAttribute('aria-pressed', String(detailTab === 'tools'));
-  $('#game-launch-panel').hidden = detailTab !== 'game';
-  $('#tools-panel').hidden = detailTab !== 'tools';
-  $('#play').hidden = detailTab === 'tools';
+  const art = $('#game-hero-art'); art.replaceChildren(artNode(game, 'hero-image'));
   $('#detail-title').textContent = game.name;
+  $('#game-kicker').textContent = 'Windows game · ' + (game.runtime_kind === 'proton' ? 'Proton' : 'Wine');
   $('#game-state').textContent = gameStatus(game);
-  $('#game-state').classList.toggle('running', running(game));
+  $('#game-state').classList.toggle('running', environmentBusy(game));
   $('#play').textContent = gameSessionRunning(game) ? 'Running' : 'Play';
+  $('#play').disabled = !canPlay(game);
+  $('#game-playtime').textContent = duration(game.play_seconds);
+  $('#last-played').textContent = relative(game.last_played_at);
+  $('#last-played').title = clock(game.last_played_at);
+  const last = (game.sessions || []).find((s) => s.seconds != null);
+  $('#game-last-session').textContent = last ? duration(last.seconds) : '—';
+  $('#game-display').textContent = displayLabel(game);
+  for (const tab of ['overview', 'game', 'display', 'tools']) $('#detail-' + tab).setAttribute('aria-pressed', String(detailTab === tab));
+  $('#overview-panel').hidden = detailTab !== 'overview';
+  $('#settings-form').hidden = detailTab !== 'game' && detailTab !== 'display';
+  $('#game-launch-panel').hidden = detailTab !== 'game';
+  $('#display-panel').hidden = detailTab !== 'display';
+  $('#tools-panel').hidden = detailTab !== 'tools';
   $('#executable-path').textContent = game.executable;
   $('#prefix-path').textContent = game.prefix;
-  $('#last-played').textContent = game.last_played_at ? game.last_played_at + ' UTC' : 'Not played yet';
+  $('#runtime-path').textContent = game.runtime_path || 'Not selected';
   $('#view-log').disabled = !game.launch;
+  const sessions = $('#game-session-list'); sessions.replaceChildren();
+  if (!(game.sessions || []).length) sessions.append(element('li', 'No sessions yet.', 'empty'));
+  for (const session of game.sessions || []) sessions.append(sessionItem(session));
   if (selectedFormId !== game.id || !dirty) populateSettings(game);
-  $('#save-settings').disabled = !dirty || busy || environmentBusy(game);
+  const locked = environmentBusy(game);
+  $('#save-settings').disabled = !dirty || busy || locked;
   $('#discard-settings').hidden = !dirty;
-  $('#settings-note').textContent = environmentBusy(game) ? 'Close the game and its companion apps before changing launch settings.' :
-    dirty ? 'Save these changes before launching or choosing another game.' : 'Arguments are passed directly to the game.';
-  for (const input of $('#settings-form').querySelectorAll('input, select, textarea')) input.disabled = environmentBusy(game);
+  $('#settings-note').textContent = locked ? 'Close the game and its companion apps before changing settings.' :
+    dirty ? 'Save these changes before launching or leaving this game.' : detailTab === 'display' ? 'Applied the next time the game starts.' : 'Arguments are passed directly to the game.';
+  for (const input of $('#settings-form').querySelectorAll('input, select, textarea')) input.disabled = locked;
+  const displayLocked = locked || !game.display_supported;
+  for (const input of $('#display-panel').querySelectorAll('input')) input.disabled = displayLocked;
+  $('#use-screen').disabled = displayLocked;
+  const custom = displayMode() !== 'default';
+  $('#display-width').disabled = $('#display-height').disabled = displayLocked || !custom;
+  $('#display-note').textContent = game.display_supported ? 'Respawn+ sets the window mode in the game’s own settings just before it starts.' :
+    'This game keeps its window mode in its own options menu. Respawn+ can set it for Skyrim SE and Fallout 4.';
   renderTools(game);
 }
 function renderTools(game) {
@@ -168,7 +315,42 @@ function renderTools(game) {
     row.append(actions); list.append(row);
   }
 }
-function render() { renderList(); renderDetail(); }
+function render() {
+  renderShell();
+  if (view.name === 'home') renderHome();
+  if (view.name === 'library') renderLibrary();
+  if (view.name === 'game') renderGame();
+}
+
+// ---------- Navigation ----------
+function parseRoute() {
+  const [, name, id] = location.hash.match(/^#\/(home|library|game)(?:\/(\d+))?/) || [];
+  return { name: name || 'home', id: id ? Number(id) : null };
+}
+function route() {
+  const next = parseRoute();
+  const leavingGame = view.name === 'game' && (next.name !== 'game' || next.id !== view.id);
+  if (dirty && leavingGame) {
+    history.replaceState(null, '', '#/game/' + view.id);
+    message('Save or discard your settings before leaving this game.', true);
+    return;
+  }
+  if (next.name === 'game' && ready && !games.some((g) => g.id === next.id)) { location.hash = '#/library'; return; }
+  const changed = next.name !== view.name || next.id !== view.id;
+  if (changed && next.name === 'game') detailTab = 'overview';
+  view = next;
+  render();
+  if (changed) {
+    // Entrance motion plays when a view opens, not on every background refresh.
+    const section = $('#view-' + view.name);
+    section.dataset.entering = 'true';
+    setTimeout(() => { delete section.dataset.entering; }, 900);
+    $('.main').scrollTo({ top: 0 });
+  }
+}
+window.addEventListener('hashchange', route);
+
+// ---------- Actions ----------
 function setBusy(value) {
   busy = value;
   for (const id of ['scan', 'scan-folder', 'add-game', 'enter-path']) $('#' + id).disabled = value || !ready;
@@ -193,7 +375,7 @@ async function loadGames() {
         }
       }
     }
-    if (!games.some((g) => g.id === selectedId)) selectedId = games[0]?.id ?? null;
+    if (view.name === 'game' && !games.some((g) => g.id === view.id)) location.hash = '#/library';
     render();
   } finally { refreshing = false; }
 }
@@ -209,7 +391,7 @@ async function scan(directory = null) {
   finally { setBusy(false); }
 }
 async function playGame(id) {
-  if (dirty) { message('Save your launch settings before playing.', true); return; }
+  if (dirty) { message('Save your settings before playing.', true); return; }
   setBusy(true);
   try {
     const game = games.find((g) => g.id === id);
@@ -224,15 +406,16 @@ async function importPath(path, name = null) {
   setBusy(true);
   try {
     const game = await invoke('import_game', { path, name });
-    selectedId = game.id; selectedFormId = null;
+    selectedFormId = null;
     await loadGames(); message(game.name + ' added to your library.');
+    location.hash = '#/game/' + game.id;
   } finally { setBusy(false); }
 }
 async function refreshEnvironment() {
   const environment = await invoke('get_environment_status');
   runtimes = environment.runtimes;
-  $('#environment-state').textContent = 'Local library connected';
-  renderRuntimes(); renderDetail();
+  $('#environment-state').textContent = runtimes.length + ' runtimes';
+  renderRuntimes(); render();
 }
 async function showLog(target = logTarget) {
   if (!target) return;
@@ -245,7 +428,7 @@ async function showLog(target = logTarget) {
 }
 function editTool(tool = null) {
   if (!current()) return;
-  toolGameId = selectedId; editingToolId = tool?.id ?? null;
+  toolGameId = view.id; editingToolId = tool?.id ?? null;
   $('#tool-dialog-title').textContent = tool ? 'Edit companion app' : 'Add companion app';
   $('#tool-kind').value = tool?.kind || 'mod_manager';
   $('#tool-name').value = tool?.name || '';
@@ -256,7 +439,7 @@ function editTool(tool = null) {
   $('#tool-dialog').showModal();
 }
 async function openTool(id) {
-  if (dirty) { message('Save your launch settings before opening a manager.', true); return; }
+  if (dirty) { message('Save your settings before opening a companion app.', true); return; }
   setBusy(true);
   try {
     const tool = current()?.tools.find((t) => t.id === id);
@@ -275,9 +458,10 @@ function removeToolDialog(tool) {
 function markDirty() {
   dirty = true;
   $('#custom-runtime').hidden = $('#runtime-choice').value !== 'custom';
-  renderList(); renderDetail();
+  render();
 }
 
+// ---------- Events ----------
 $('#scan').addEventListener('click', () => scan());
 $('#scan-folder').addEventListener('click', async () => {
   try { const folder = await open({ directory: true, multiple: false, title: 'Choose a folder to scan for games' }); if (folder) await scan(folder); }
@@ -294,20 +478,25 @@ $('#import-form').addEventListener('submit', async (event) => {
   catch (error) { $('#import-error').textContent = String(error); $('#import-error').hidden = false; }
 });
 $('#settings-form').addEventListener('input', markDirty);
-$('#discard-settings').addEventListener('click', () => { dirty = false; render(); message('Unsaved changes discarded.'); });
+$('#discard-settings').addEventListener('click', () => { dirty = false; selectedFormId = null; render(); message('Unsaved changes discarded.'); });
 $('#runtime-choice').addEventListener('change', markDirty);
+$('#use-screen').addEventListener('click', () => { const [w, h] = screenSize(); $('#display-width').value = w; $('#display-height').value = h; markDirty(); });
 $('#settings-form').addEventListener('submit', async (event) => {
   event.preventDefault();
   const choice = $('#runtime-choice').value;
-  if (!choice) { message('Choose an installed runtime or a custom runner.', true); return; }
+  if (!choice) { message('Choose an installed runtime or a custom runner.', true); detailTab = 'game'; render(); return; }
   const separator = choice.indexOf('|');
   const kind = choice === 'custom' ? $('#custom-runtime-kind').value : choice.slice(0, separator);
   const path = choice === 'custom' ? $('#custom-runtime-path').value.trim() : choice.slice(separator + 1);
+  const mode = displayMode();
   setBusy(true);
   try {
-    await invoke('save_game', { settings: { id: selectedId, name: $('#game-name').value, runtime_kind: kind, runtime_path: path,
-      arguments: $('#argument-lines').value.split('\n').filter((line) => line.length > 0) } });
-    dirty = false; await loadGames(); message('Launch settings saved.');
+    await invoke('save_game', { settings: { id: view.id, name: $('#game-name').value, runtime_kind: kind, runtime_path: path,
+      arguments: $('#argument-lines').value.split('\n').filter((line) => line.length > 0),
+      display_mode: mode,
+      display_width: mode === 'default' ? null : Number($('#display-width').value),
+      display_height: mode === 'default' ? null : Number($('#display-height').value) } });
+    dirty = false; await loadGames(); message('Settings saved.');
   } catch (error) { message(String(error), true); }
   finally { setBusy(false); }
 });
@@ -315,14 +504,14 @@ $('#browse-runtime').addEventListener('click', async () => {
   try { const path = await open({ multiple: false, title: 'Choose the proton script or Wine executable' }); if (path) { $('#custom-runtime-path').value = path; markDirty(); } }
   catch (error) { message(String(error), true); }
 });
-$('#play').addEventListener('click', () => { if (current()) playGame(selectedId); });
-$('#search').addEventListener('input', renderList);
-for (const mode of ['all', 'running']) $('#filter-' + mode).addEventListener('click', () => { filter = mode; renderList(); });
+$('#play').addEventListener('click', () => { if (current()) playGame(view.id); });
+$('#continue-play').addEventListener('click', (event) => { const id = Number(event.currentTarget.dataset.gameId); if (id) playGame(id); });
+$('#search').addEventListener('input', () => { if (view.name !== 'library') location.hash = '#/library'; else renderLibrary(); });
+for (const mode of ['all', 'running']) $('#filter-' + mode).addEventListener('click', () => { filter = mode; renderLibrary(); });
 $('#refresh').addEventListener('click', () => refreshEnvironment().catch((error) => message(String(error), true)));
-$('#view-log').addEventListener('click', () => showLog({ type: 'game', id: selectedId }));
+$('#view-log').addEventListener('click', () => showLog({ type: 'game', id: view.id }));
 $('#refresh-log').addEventListener('click', () => showLog());
-$('#detail-game').addEventListener('click', () => { detailTab = 'game'; renderDetail(); });
-$('#detail-tools').addEventListener('click', () => { detailTab = 'tools'; renderDetail(); });
+for (const tab of ['overview', 'game', 'display', 'tools']) $('#detail-' + tab).addEventListener('click', () => { detailTab = tab; renderGame(); });
 $('#add-tool').addEventListener('click', () => editTool());
 $('#browse-tool').addEventListener('click', async () => {
   try {
@@ -345,18 +534,18 @@ $('#tool-form').addEventListener('submit', async (event) => {
 });
 $('#remove-tool-form').addEventListener('submit', async (event) => {
   event.preventDefault();
-  try { await invoke('remove_tool', { toolId: removingToolId }); $('#remove-tool-dialog').close(); await loadGames(); message('Mod manager profile removed. Files were kept on disk.'); }
+  try { await invoke('remove_tool', { toolId: removingToolId }); $('#remove-tool-dialog').close(); await loadGames(); message('Companion app profile removed. Files were kept on disk.'); }
   catch (error) { $('#remove-tool-error').textContent = String(error); $('#remove-tool-error').hidden = false; }
 });
-$('#back-library').addEventListener('click', () => { document.body.dataset.detailOpen = 'false'; });
 for (const button of document.querySelectorAll('[data-close]')) button.addEventListener('click', () => $('#' + button.dataset.close).close());
 
 async function initialize() {
+  route();
   try {
-    await refreshEnvironment(); ready = true; await loadGames(); setBusy(false);
+    await refreshEnvironment(); ready = true; await loadGames(); setBusy(false); route();
     if (!games.length) await scan();
   } catch (error) {
-    $('#environment-state').textContent = 'Desktop backend unavailable';
+    $('#environment-state').textContent = 'Backend unavailable';
     $('#library-summary').textContent = 'Open Respawn+ as a desktop app to load your games.';
     $('#game-list').replaceChildren(element('p', 'The local game library requires the Respawn+ desktop backend.', 'empty'));
     message(String(error), true); setBusy(false);
@@ -364,4 +553,3 @@ async function initialize() {
 }
 initialize();
 setInterval(() => { if (ready && !busy) loadGames().catch((error) => message('Could not refresh library: ' + error, true)); }, 2500);
-
