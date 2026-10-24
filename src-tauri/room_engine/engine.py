@@ -528,8 +528,11 @@ def target_path(prefix, name, allow_leaf_link=False):
     return target
 
 
-def sandbox_args(config, descriptor):
-    args = [shutil.which('bwrap') or fail('bubblewrap is required'), '--unshare-all', '--share-net', '--new-session', '--die-with-parent', '--cap-drop', 'ALL', '--clearenv', '--seccomp', str(descriptor)]
+def sandbox_args(config, descriptor, ids):
+    # pasta runs its child as root in a new user namespace; map the room back to the host
+    # user so UMU/Proton (which refuse root) and /run/user paths see the real identity.
+    uid, gid = ids
+    args = [shutil.which('bwrap') or fail('bubblewrap is required'), '--unshare-all', '--share-net', '--uid', str(uid), '--gid', str(gid), '--new-session', '--die-with-parent', '--cap-drop', 'ALL', '--clearenv', '--seccomp', str(descriptor)]
     mount(args, '/usr')
     for name in ('bin', 'sbin', 'lib', 'lib64'):
         path = Path('/') / name
@@ -552,12 +555,12 @@ def sandbox_args(config, descriptor):
     for path in config['read_only_roots']: mount(args, path)
     for source, destination in config.get('runtime_mounts', []): mount(args, source, destination)
     for source, destination in config.get('private_mounts', []): mount(args, source, destination, writable=True)
-    runtime = f'/run/user/{os.getuid()}'
+    runtime = f'/run/user/{uid}'
     args.extend(['--dir', runtime])
     if config['display'] != 'headless':
         mount(args, config['wayland'], runtime + '/wayland-0')
     if config.get('audio'):
-        pulse = Path(os.environ.get('XDG_RUNTIME_DIR', f'/run/user/{os.getuid()}')) / 'pulse/native'
+        pulse = Path(os.environ.get('XDG_RUNTIME_DIR', f'/run/user/{uid}')) / 'pulse/native'
         if pulse.exists(): mount(args, pulse, runtime + '/pulse/native')
     if config.get('graphics'):
         for path in sorted(Path('/dev/dri').glob('renderD*')) if Path('/dev/dri').exists() else []:
@@ -585,7 +588,8 @@ def sandbox_args(config, descriptor):
     return args
 
 
-def session(config, config_path, network_ready=False):
+def session(config, config_path, network_ready=False, ids=None):
+    ids = ids or (os.getuid(), os.getgid())
     descriptor = None
     child = None
     def stop(signum, frame):
@@ -599,13 +603,13 @@ def session(config, config_path, network_ready=False):
             pasta = shutil.which('pasta') or fail('Online rooms require pasta (the passt package)')
             nameservers = [line.split()[1] for line in Path('/etc/resolv.conf').read_text().splitlines() if line.startswith('nameserver ') and len(line.split()) >= 2]
             dns = ['--dns-host', nameservers[0]] if nameservers else []
-            args = [pasta, '--foreground', '--config-net', '--no-map-gw', '--dns-forward', '169.254.1.1', *dns, '-t', 'none', '-u', 'none', '-T', 'none', '-U', 'none', '--', sys.executable, '-I', str(Path(__file__).resolve()), 'network-child', str(config_path)]
+            args = [pasta, '--foreground', '--config-net', '--no-map-gw', '--dns-forward', '169.254.1.1', *dns, '-t', 'none', '-u', 'none', '-T', 'none', '-U', 'none', '--', sys.executable, '-I', str(Path(__file__).resolve()), 'network-child', str(config_path), str(ids[0]), str(ids[1])]
             # pasta manages descriptors for its own tap sockets. Generate the seccomp FD
             # after its exec, instead of allowing an inherited FD number to be repurposed.
             child = subprocess.Popen(args, start_new_session=True, close_fds=True)
         else:
             descriptor = seccomp_fd()
-            args = sandbox_args(config, descriptor)
+            args = sandbox_args(config, descriptor, ids)
             child = subprocess.Popen(args, pass_fds=(descriptor,), start_new_session=True, close_fds=True)
         return child.wait()
     finally:
@@ -628,7 +632,7 @@ def main():
     elif options.action == 'compose': print(json.dumps(compose(json.loads(a[0]))))
     elif options.action == 'plan': print(json.dumps(plan(a[0],json.loads(a[1]),json.loads(a[2]),json.loads(a[3]) if len(a)>3 else None)))
     elif options.action == 'session': return session(json.loads(Path(a[0]).read_bytes()), a[0])
-    elif options.action == 'network-child': return session(json.loads(Path(a[0]).read_bytes()), a[0], network_ready=True)
+    elif options.action == 'network-child': return session(json.loads(Path(a[0]).read_bytes()), a[0], network_ready=True, ids=(int(a[1]), int(a[2])))
     elif options.action == 'supervise': return supervise(json.loads(Path(a[0]).read_bytes()))
     elif options.action == 'exec': return client(a[0], json.loads(a[1]))
     return 0

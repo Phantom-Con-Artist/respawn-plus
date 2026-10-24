@@ -221,6 +221,13 @@ print(json.dumps({{'bytes':p.read_text(),'inode':p.stat().st_ino,'writable':writ
         net = self.run_in(root,"import os; print(os.readlink('/proc/self/ns/net'))").strip()
         self.assertNotEqual(net, os.readlink('/proc/self/ns/net'))
 
+    def test_online_and_offline_rooms_run_as_the_host_user_not_root(self):
+        # UMU refuses to start as root; pasta's user namespace would otherwise map to uid 0.
+        for network in ['offline']+(['online'] if shutil.which('pasta') else []):
+            root = self.start('identity-'+network, network=network)
+            ids = self.run_in(root,"import os; print(os.geteuid(), os.getegid(), os.environ['XDG_RUNTIME_DIR'])").split()
+            self.assertEqual(ids, [str(os.getuid()), str(os.getgid()), f'/run/user/{os.getuid()}'])
+
     def test_online_and_offline_rooms_cannot_connect_to_host_abstract_sockets(self):
         address='\0respawn-host-only-'+str(os.getpid())
         with socket.socket(socket.AF_UNIX) as server:
