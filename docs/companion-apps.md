@@ -106,3 +106,7 @@ share a container or that the trainer detects the game.
 References: [SKSE compatibility](https://skse.silverlock.org/),
 [MO2](https://github.com/ModOrganizer2/modorganizer),
 [Linux MO2 integration](https://github.com/Furglitch/modorganizer2-linux-installer).
+
+## Play through a companion app
+
+On the game's Launch tab, set **Play starts** to one of the game's companion apps. Play then opens that app, with its own arguments, in the game's room, and the time counts as play. Use it for any mod manager that can start the game itself, for example Mod Organizer 2 with the argument `moshortcut://:SKSE` (an executable named SKSE inside MO2) or Vortex. Opening the same app with its own Open button is not counted as play. Other companion apps keep running alongside it.

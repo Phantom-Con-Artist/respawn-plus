@@ -31,7 +31,9 @@ Verified on Fedora with GE-Proton 11-11, UMU 1.4.4 and Skyrim Special Edition 1.
 - The game, its script extender (SKSE 2.3.1) and a standalone trainer ran together in one room; the trainer found `SkyrimSE.exe` (process 400) and all of its options ran without a crash.
 - Mod Organizer 2.5.2 ran under Proton in the game's prefix: its own window, its virtual filesystem, and Skyrim started from MO2's Run button with a trainer alongside.
 
-Next (designed, not built): **guided mod manager integration** through per-manager adapters, with MO2 first and Vortex after its own Proton check: one-click setup, a per-game instance, and a "launch through mod manager" switch. See [the design](docs/superpowers/specs/2026-10-24-mod-manager-integration-design.md). Until then, add any manager as a companion app and launch the game from inside it.
+**Play through any companion app.** On a game's Launch tab, *Play starts* can be the game itself or any of its companion apps, for example Mod Organizer 2 with the argument `moshortcut://:SKSE`, or Vortex. Play then opens that app in the game's room and the session counts as play; opening the manager on its own does not. Every other companion (trainers, WeMod, tools) still runs alongside.
+
+Next: one-click setup helpers for common managers (see [the design](docs/superpowers/specs/2026-10-24-mod-manager-integration-design.md)).
 
 Compatibility varies by game and tool; Respawn+ says what was tested and does not promise universal Windows parity. It is not a sandbox: companion apps are ordinary Wine processes.
 
@@ -110,7 +112,7 @@ WINEPREFIX="$HOME/.local/share/respawn-plus/prefixes/runtime-check" \
 
 ## Data locations
 
-- Library: `$XDG_DATA_HOME/respawn-plus/respawn-plus.sqlite3` (normally `~/.local/share/respawn-plus/`), schema v4.
+- Library: `$XDG_DATA_HOME/respawn-plus/respawn-plus.sqlite3` (normally `~/.local/share/respawn-plus/`), schema v5.
 - Prefixes: `~/.local/share/respawn-plus/prefixes/game-<id>`.
 - Launch logs: `~/.local/state/respawn-plus/logs/library/`.
 

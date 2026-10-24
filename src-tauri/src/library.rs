@@ -42,6 +42,8 @@ pub struct Game {
     pub display_height: Option<u32>,
     /// Whether Respawn+ can set this game's window mode (see `display`).
     pub display_supported: bool,
+    /// Companion app (usually a mod manager) that Play starts instead of the game.
+    pub launch_via_tool_id: Option<i64>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -113,6 +115,8 @@ pub struct GameSettings {
     pub display_width: Option<u32>,
     #[serde(default)]
     pub display_height: Option<u32>,
+    #[serde(default)]
+    pub launch_via_tool_id: Option<i64>,
 }
 
 fn default_display_mode() -> String {
@@ -158,7 +162,7 @@ impl Launcher {
     pub fn games(&self) -> Result<Vec<Game>, String> {
         let db = self.connection()?;
         reconcile(&db)?;
-        let mut query = db.prepare("SELECT g.id,g.name,g.executable,g.source,g.runtime_kind,g.runtime_path,g.arguments_json,g.last_played_at,p.path,l.id,l.state,l.exit_code,l.log_path,l.error,g.display_mode,g.display_width,g.display_height FROM games g LEFT JOIN prefixes p ON p.id=(SELECT id FROM prefixes WHERE game_id=g.id ORDER BY id LIMIT 1) LEFT JOIN launches l ON l.id=(SELECT MAX(id) FROM launches WHERE game_id=g.id AND tool_id IS NULL) ORDER BY g.name COLLATE NOCASE").map_err(|e| e.to_string())?;
+        let mut query = db.prepare("SELECT g.id,g.name,g.executable,g.source,g.runtime_kind,g.runtime_path,g.arguments_json,g.last_played_at,p.path,l.id,l.state,l.exit_code,l.log_path,l.error,g.display_mode,g.display_width,g.display_height,g.launch_via_tool_id FROM games g LEFT JOIN prefixes p ON p.id=(SELECT id FROM prefixes WHERE game_id=g.id ORDER BY id LIMIT 1) LEFT JOIN launches l ON l.id=(SELECT MAX(id) FROM launches WHERE game_id=g.id AND tool_id IS NULL) ORDER BY g.name COLLATE NOCASE").map_err(|e| e.to_string())?;
         let rows = query
             .query_map([], |row| {
                 let executable: String = row.get::<_, Option<String>>(2)?.unwrap_or_default();
@@ -182,6 +186,7 @@ impl Launcher {
                     display_mode: row.get(14)?,
                     display_width: row.get(15)?,
                     display_height: row.get(16)?,
+                    launch_via_tool_id: row.get(17)?,
                     prefix: row.get::<_, Option<String>>(8)?.unwrap_or_default(),
                     tools: tools_for_game(&db, row.get(0)?)?,
                     launch: match launch_id {
@@ -295,24 +300,41 @@ impl Launcher {
         {
             return Err("Choose a resolution for this display mode".into());
         }
+        if let Some(tool_id) = settings.launch_via_tool_id {
+            if !game.tools.iter().any(|t| t.id == tool_id) {
+                return Err(
+                    "Play can only launch through one of this game's companion apps".into(),
+                );
+            }
+        }
         let db = self.connection()?;
-        let updated = db.execute("UPDATE games SET name=?1,runtime_kind=?2,runtime_path=?3,arguments_json=?4,display_mode=?5,display_width=?6,display_height=?7 WHERE id=?8", params![settings.name.trim(),settings.runtime_kind,settings.runtime_path,serde_json::to_string(&settings.arguments).map_err(|e| e.to_string())?,settings.display_mode,settings.display_width,settings.display_height,settings.id]).map_err(|e| e.to_string())?;
+        let updated = db.execute("UPDATE games SET name=?1,runtime_kind=?2,runtime_path=?3,arguments_json=?4,display_mode=?5,display_width=?6,display_height=?7,launch_via_tool_id=?8 WHERE id=?9", params![settings.name.trim(),settings.runtime_kind,settings.runtime_path,serde_json::to_string(&settings.arguments).map_err(|e| e.to_string())?,settings.display_mode,settings.display_width,settings.display_height,settings.launch_via_tool_id,settings.id]).map_err(|e| e.to_string())?;
         if updated != 1 {
             return Err("Game not found".into());
         }
         Ok(())
     }
 
+    /// Play: the game itself, or the companion app chosen to start it (such as a mod manager).
     pub fn launch(&self, id: i64) -> Result<Launch, String> {
-        self.launch_target(id, None)
+        let via = self
+            .games()?
+            .into_iter()
+            .find(|g| g.id == id)
+            .ok_or("Game not found")?
+            .launch_via_tool_id;
+        match via {
+            Some(tool_id) => self.launch_target(id, Some(tool_id), true),
+            None => self.launch_target(id, None, false),
+        }
     }
 
     pub fn launch_tool(&self, tool_id: i64) -> Result<Launch, String> {
         let tool = self.find_tool(tool_id)?;
-        self.launch_target(tool.game_id, Some(tool_id))
+        self.launch_target(tool.game_id, Some(tool_id), false)
     }
 
-    fn launch_target(&self, id: i64, tool_id: Option<i64>) -> Result<Launch, String> {
+    fn launch_target(&self, id: i64, tool_id: Option<i64>, play: bool) -> Result<Launch, String> {
         let _guard = self.launch_lock.lock().map_err(|e| e.to_string())?;
         let mut game = self
             .games()?
@@ -335,7 +357,7 @@ impl Launcher {
             if is_running(&tool.launch) {
                 return Err("This companion app is already running".into());
             }
-            counts_as_play = tool.kind == "script_extender";
+            counts_as_play = play || tool.kind == "script_extender";
             if counts_as_play && (script_active || is_running(&game.launch)) {
                 return Err("The game is already running".into());
             }
@@ -400,8 +422,8 @@ impl Launcher {
             .stderr(Stdio::from(log))
             .stdin(Stdio::null());
         db.execute(
-            "INSERT INTO launches (game_id,tool_id,state,log_path) VALUES (?1,?2,'starting',?3)",
-            params![id, tool_id, log_path.display().to_string()],
+            "INSERT INTO launches (game_id,tool_id,state,log_path,as_play) VALUES (?1,?2,'starting',?3,?4)",
+            params![id, tool_id, log_path.display().to_string(), play],
         )
         .map_err(|e| e.to_string())?;
         let launch_id = db.last_insert_rowid();
@@ -553,7 +575,7 @@ fn is_running(launch: &Option<Launch>) -> bool {
 /// Play sessions are direct game launches and script-extender launches. Durations come from the
 /// supervisor's recorded end time; a running session counts up to now; `unknown` rows were closed
 /// by reconciliation long after the fact, so their duration is not trusted.
-const PLAY_SESSIONS: &str = "FROM launches l LEFT JOIN tools t ON t.id=l.tool_id WHERE l.game_id=?1 AND (l.tool_id IS NULL OR t.kind='script_extender')";
+const PLAY_SESSIONS: &str = "FROM launches l LEFT JOIN tools t ON t.id=l.tool_id WHERE l.game_id=?1 AND (l.tool_id IS NULL OR t.kind='script_extender' OR l.as_play=1)";
 const SESSION_SECONDS: &str = "CASE WHEN l.state IN ('finished','failed') AND l.ended_at IS NOT NULL THEN CAST(ROUND((julianday(l.ended_at)-julianday(l.started_at))*86400) AS INTEGER) WHEN l.state IN ('starting','running') THEN CAST(ROUND((julianday('now')-julianday(l.started_at))*86400) AS INTEGER) END";
 const RECENT_SESSIONS: usize = 8;
 
@@ -825,6 +847,7 @@ mod tests {
                 display_mode: "default".into(),
                 display_width: None,
                 display_height: None,
+                launch_via_tool_id: None,
                 id: game.id,
                 name: game.name.clone(),
                 runtime_kind: "wine".into(),
@@ -851,6 +874,7 @@ mod tests {
                 display_mode: "default".into(),
                 display_width: None,
                 display_height: None,
+                launch_via_tool_id: None,
                 id: game.id,
                 name: game.name.clone(),
                 runtime_kind: "wine".into(),
@@ -949,6 +973,7 @@ mod tests {
                 display_mode: "default".into(),
                 display_width: None,
                 display_height: None,
+                launch_via_tool_id: None,
                 id: game.id,
                 name: "My Mines".into(),
                 runtime_kind: "wine".into(),
@@ -983,6 +1008,7 @@ mod tests {
                 display_mode: "default".into(),
                 display_width: None,
                 display_height: None,
+                launch_via_tool_id: None,
                 id: game.id,
                 name: game.name.clone(),
                 runtime_kind: "wine".into(),
@@ -1031,6 +1057,7 @@ mod tests {
                 display_mode: "default".into(),
                 display_width: None,
                 display_height: None,
+                launch_via_tool_id: None,
                 id: game.id,
                 name: game.name.clone(),
                 runtime_kind: "wine".into(),
@@ -1132,6 +1159,7 @@ mod tests {
                 display_mode: "borderless".into(),
                 display_width: Some(2560),
                 display_height: Some(1440),
+                launch_via_tool_id: None,
             })
             .unwrap();
         let skse = launcher
@@ -1158,6 +1186,78 @@ mod tests {
         assert!(read_log(&launch.log_path)
             .unwrap()
             .contains("Display: borderless 2560×1440"));
+    }
+
+    fn wait_for_exit(launcher: &Launcher, launch_id: i64) {
+        for _ in 0..250 {
+            let db = launcher.connection().unwrap();
+            let state: String = db
+                .query_row("SELECT state FROM launches WHERE id=?1", [launch_id], |r| {
+                    r.get(0)
+                })
+                .unwrap();
+            if state != "starting" && state != "running" {
+                return;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+        panic!("Launch {launch_id} did not end");
+    }
+
+    #[test]
+    fn play_launches_through_the_chosen_mod_manager_and_counts_as_play() {
+        let temp = tempfile::tempdir().unwrap();
+        let launcher = Launcher::at(temp.path().join("state"), temp.path().join("logs")).unwrap();
+        let exe = temp.path().join("Game.exe");
+        let manager = temp.path().join("ModOrganizer.exe");
+        fs::write(&exe, b"MZtest").unwrap();
+        fs::write(&manager, b"MZtest").unwrap();
+        let runner = temp.path().join("wine-test");
+        fs::write(&runner, "#!/bin/sh\necho \"ran $*\"\nexit 0\n").unwrap();
+        fs::set_permissions(&runner, fs::Permissions::from_mode(0o755)).unwrap();
+        let game = launcher.import(&exe, None, "manual").unwrap();
+        let tool = launcher
+            .save_tool(ToolSettings {
+                id: None,
+                game_id: game.id,
+                kind: "mod_manager".into(),
+                name: "Mod Organizer 2".into(),
+                executable: manager.display().to_string(),
+                arguments: vec!["moshortcut://:SKSE".into()],
+                working_directory: String::new(),
+            })
+            .unwrap();
+        let settings = |via| GameSettings {
+            id: game.id,
+            name: game.name.clone(),
+            runtime_kind: "wine".into(),
+            runtime_path: runner.display().to_string(),
+            arguments: vec![],
+            display_mode: "default".into(),
+            display_width: None,
+            display_height: None,
+            launch_via_tool_id: via,
+        };
+        assert!(launcher.save(settings(Some(tool.id + 99))).is_err());
+        launcher.save(settings(Some(tool.id))).unwrap();
+
+        // Opening the manager on its own is not play.
+        let alone = launcher.launch_tool(tool.id).unwrap();
+        wait_for_exit(&launcher, alone.id);
+        let game_now = launcher.games().unwrap().remove(0);
+        assert_eq!(game_now.launch_via_tool_id, Some(tool.id));
+        assert!(game_now.sessions.is_empty());
+
+        // Play starts the manager with its shortcut, and that session is play.
+        let played = launcher.launch(game.id).unwrap();
+        wait_for_exit(&launcher, played.id);
+        assert!(read_log(&played.log_path)
+            .unwrap()
+            .contains("ModOrganizer.exe"));
+        let game_now = launcher.games().unwrap().remove(0);
+        assert_eq!(game_now.sessions.len(), 1);
+        assert_eq!(game_now.sessions[0].via.as_deref(), Some("Mod Organizer 2"));
+        assert!(game_now.last_played_at.is_some());
     }
 
     #[test]

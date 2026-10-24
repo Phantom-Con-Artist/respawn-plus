@@ -128,6 +128,7 @@
               <div class="card setting-panel">
                 <label>Game name<input id="game-name" required maxlength="160" /></label>
                 <label>Runtime<select id="runtime-choice"></select></label>
+                <label>Play starts<select id="play-via"></select><span class="muted">The game, or a companion app that starts it, such as a mod manager with a launch shortcut. Other companion apps still run alongside.</span></label>
                 <div id="custom-runtime" hidden><label>Runtime type<select id="custom-runtime-kind"><option value="proton">Proton (via UMU)</option><option value="wine">Wine</option></select></label><label>Runner executable<input id="custom-runtime-path" placeholder="/path/to/proton or /path/to/wine" /></label><button type="button" id="browse-runtime" class="text-button">Browse for a runner</button></div>
                 <label>Launch arguments <span class="muted">One per line</span><textarea id="argument-lines" rows="2" placeholder="Optional"></textarea></label>
               </div>

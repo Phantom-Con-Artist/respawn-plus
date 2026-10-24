@@ -85,7 +85,7 @@ function runnerName(game) {
 // ---------- Game state ----------
 function current() { return view.name === 'game' ? games.find((g) => g.id === view.id) : undefined; }
 function running(item) { return item.launch?.state === 'running'; }
-function gameSessionRunning(game) { return running(game) || (game.tools || []).some((tool) => tool.kind === 'script_extender' && running(tool)); }
+function gameSessionRunning(game) { return running(game) || (game.tools || []).some((tool) => (tool.kind === 'script_extender' || tool.id === game.launch_via_tool_id) && running(tool)); }
 function environmentBusy(game) { return running(game) || (game.tools || []).some(running); }
 function canPlay(game) { return !busy && !dirty && !gameSessionRunning(game) && game.available && !!game.runtime_path; }
 function needsSetup(game) { return !game.available || !game.runtime_path; }
@@ -305,6 +305,9 @@ function populateSettings(game) {
   $('#custom-runtime-path').value = game.runtime_path;
   $('#custom-runtime').hidden = select.value !== 'custom';
   $('#argument-lines').value = game.arguments.join('\n');
+  const via = $('#play-via'); via.replaceChildren(new Option('The game itself', ''));
+  for (const tool of game.tools || []) via.append(new Option('Through ' + tool.name, String(tool.id)));
+  via.value = game.launch_via_tool_id ? String(game.launch_via_tool_id) : '';
   for (const radio of document.querySelectorAll('[name="display-mode"]')) radio.checked = radio.value === game.display_mode;
   const [width, height] = screenSize();
   $('#display-width').value = game.display_width ?? width;
@@ -553,7 +556,8 @@ $('#settings-form').addEventListener('submit', async (event) => {
       arguments: $('#argument-lines').value.split('\n').filter((line) => line.length > 0),
       display_mode: mode,
       display_width: mode === 'default' ? null : Number($('#display-width').value),
-      display_height: mode === 'default' ? null : Number($('#display-height').value) } });
+      display_height: mode === 'default' ? null : Number($('#display-height').value),
+      launch_via_tool_id: $('#play-via').value ? Number($('#play-via').value) : null } });
     dirty = false; await loadGames(); message('Settings saved.');
   } catch (error) { message(String(error), true); }
   finally { setBusy(false); }
