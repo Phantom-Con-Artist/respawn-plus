@@ -1,26 +1,27 @@
 ---
 // SPDX-License-Identifier: MIT
 import Base from '../layouts/Base.astro';
+import NightWindow from '../components/NightWindow.astro';
 const repo = 'https://github.com/Phantom-Con-Artist/respawn-plus';
 ---
-<Base title="About — Vessel" description="Why Vessel exists: run, play and configure Windows games and their mods on Linux the way you would on Windows." current="about">
+<Base title="About · Vessel" description="Why Vessel exists: play Windows games and their mods on Linux the way you would on Windows." current="about">
   <header class="page-head">
-    <h1>Why Vessel</h1>
-    <p>Playing a modded Windows game on Linux should not mean a weekend of prefixes, launch flags and forum threads.</p>
+    <h1 class="arrive">Why Vessel</h1>
+    <p class="arrive">Playing a modded Windows game on Linux should not mean a weekend of prefixes, launch flags and forum threads.</p>
   </header>
-  <div class="band" aria-hidden="true"></div>
-  <section class="about" aria-label="The story">
-    <div class="story reveal">
-      <p>Proton made Windows games run on Linux. The hard part is everything around them that Windows players take for granted: the mod manager that has to see the same files, whether it is Mod Organizer 2, Vortex or another; the script extender that has to start the game; the trainer that has to find its process.</p>
-      <p>Vessel is a general launcher for all of it. Each game gets one room, its own Wine prefix and runner, shared by every companion app you add. Run, play and configure the game and its mods there, the way you would on Windows.</p>
-      <p>It copies nothing and changes nothing during discovery, keeps your saves and prefixes where they are, and says plainly what has been tested and what has not.</p>
+  <NightWindow size="slim" />
+  <section class="inner about-grid" aria-label="The story">
+    <div class="story arrive">
+      <p>Proton made Windows games run on Linux. The hard part is everything around them that Windows players take for granted: the mod manager that has to see the same files, the script extender that has to start the game, the trainer that has to find its process.</p>
+      <p>Vessel is a general launcher for all of it. Each game gets one room: its own sandbox, its own Proton or Wine prefix, shared by every companion app you add. You choose what starts the game and what opens with it, and one press starts them together.</p>
+      <p>It copies nothing and changes nothing when it finds your games, keeps your saves where they are, and says plainly what has been tested and what has not. Today that is Skyrim Special Edition with Mod Organizer 2, SKSE and a trainer.</p>
       <p><a class="link" href={repo}>Read the code on GitHub</a> or <a class="link" href="/docs/">start with the docs</a>.</p>
     </div>
-    <div class="facts reveal">
-      <div><strong>v0.1.0</strong><span>Beta, coming soon</span></div>
-      <div><strong>MIT</strong><span>Free and open source</span></div>
-      <div><strong>1 room</strong><span>per game, shared by any mod manager, extender or trainer</span></div>
-      <div><strong>Fedora</strong><span>where every feature is tested first</span></div>
-    </div>
+    <dl class="ticket arrive">
+      <div><dt>Version</dt><dd>v0.1.0 Beta, coming soon</dd></div>
+      <div><dt>Licence</dt><dd>MIT, free and open source</dd></div>
+      <div><dt>Rooms</dt><dd>One per game, shared by its mod manager, extender and trainer</dd></div>
+      <div><dt>Tested on</dt><dd>Fedora, KDE Plasma on Wayland</dd></div>
+    </dl>
   </section>
 </Base>

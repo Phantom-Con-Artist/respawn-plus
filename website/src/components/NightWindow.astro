@@ -1,0 +1,154 @@
+---
+// SPDX-License-Identifier: MIT
+// The carriage window: a night city generated from a seed slides past behind the glass. The sky
+// follows the visitor's own hour; scrolling is the throttle. Without script, a still night shows.
+interface Props { size?: 'full' | 'slim'; label?: string }
+const { size = 'full', label = 'A night city passing outside a train window' } = Astro.props;
+---
+<div class:list={['window', `window-${size}`]} role="img" aria-label={label}>
+  <canvas class="window-city" aria-hidden="true"></canvas>
+  <span class="window-mullion" aria-hidden="true"></span>
+  <span class="window-mullion" aria-hidden="true"></span>
+</div>
+
+<script>
+  type Building = { x: number; w: number; h: number; lit: number[]; sign?: { y: number; h: number; w: number; hue: string; flicker: number } };
+  type Layer = { depth: number; base: string; window: string[]; buildings: Building[]; span: number };
+
+  // A small seeded generator, so the city is the same city on every visit and every reload.
+  const seeded = (seed: number) => () => {
+    seed |= 0; seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+
+  // Sky by the visitor's hour: dusk, deep night or first light. Colours are the page's own.
+  const sky = (hour: number) => {
+    if (hour >= 17 && hour < 20) return { top: '#0b1324', mid: '#2a1b3d', low: '#ff7a3d', glow: 'rgba(255,122,61,0.55)' };
+    if (hour >= 5 && hour < 8) return { top: '#0e1d2b', mid: '#1f3f4f', low: '#f2b48a', glow: 'rgba(24,230,228,0.35)' };
+    return { top: '#05070d', mid: '#0e1d2b', low: '#123344', glow: 'rgba(24,230,228,0.45)' };
+  };
+
+  function city(random: () => number, depth: number, span: number, palette: { base: string; window: string[] }, tall: number): Layer {
+    const buildings: Building[] = [];
+    let x = 0;
+    while (x < span) {
+      const w = 40 + random() * 120 * (1.2 - depth * 0.5);
+      const h = 0.08 + random() * tall;
+      const lit = Array.from({ length: 64 }, () => random());
+      const b: Building = { x, w, h, lit };
+      if (random() < 0.22 * (1 - depth * 0.6)) b.sign = { y: 0.2 + random() * 0.5, h: 10 + random() * 22, w: 0.5 + random() * 0.4, hue: ['#ff3d8b', '#18e6e4', '#ffb347', '#9d7bff'][Math.floor(random() * 4)], flicker: random() };
+      buildings.push(b);
+      x += w + (random() < 0.3 ? 60 + random() * 160 : random() * 18);
+    }
+    return { depth, base: palette.base, window: palette.window, buildings, span: x };
+  }
+
+  for (const host of document.querySelectorAll<HTMLElement>('.window')) {
+    const canvas = host.querySelector('canvas')!;
+    const context = canvas.getContext('2d');
+    if (!context) continue;
+    const random = seeded(1984);
+    const span = 2400;
+    const layers = [
+      city(random, 0.15, span, { base: '#0b1828', window: ['#3b6b86', '#2c5a73'] }, 0.6),
+      city(random, 0.45, span, { base: '#070d17', window: ['#ffd9a8', '#9fe8ff', '#ffcf7a'] }, 0.42),
+      city(random, 0.9, span, { base: '#04060b', window: ['#ffb347', '#ffe3b8'] }, 0.2),
+    ];
+    const drops = Array.from({ length: 70 }, () => ({ x: random(), y: random(), l: 6 + random() * 18, s: 0.15 + random() * 0.35 }));
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let width = 0, height = 0, travelled = 0, last = performance.now(), boost = 0, visible = true, frame = 0;
+
+    const resize = () => {
+      const ratio = Math.min(devicePixelRatio || 1, 2);
+      width = host.clientWidth; height = host.clientHeight;
+      canvas.width = Math.round(width * ratio); canvas.height = Math.round(height * ratio);
+      context.setTransform(ratio, 0, 0, ratio, 0, 0);
+      draw(0);
+    };
+
+    function draw(time: number) {
+      const colours = sky(new Date().getHours());
+      const horizon = height * 0.74;
+      const gradient = context!.createLinearGradient(0, 0, 0, horizon);
+      gradient.addColorStop(0, colours.top); gradient.addColorStop(0.62, colours.mid); gradient.addColorStop(1, colours.low);
+      context!.fillStyle = gradient; context!.fillRect(0, 0, width, height);
+      // The horizon: the logo's cyan, glowing where the sky meets the city.
+      const haze = context!.createLinearGradient(0, horizon - height * 0.32, 0, horizon + 6);
+      haze.addColorStop(0, 'rgba(0,0,0,0)'); haze.addColorStop(1, colours.glow);
+      context!.fillStyle = haze; context!.fillRect(0, horizon - height * 0.32, width, height * 0.32 + 6);
+      context!.fillStyle = '#18e6e4'; context!.fillRect(0, horizon - 1, width, 2);
+
+      for (const layer of layers) {
+        const offset = (travelled * (0.08 + layer.depth * 0.9)) % layer.span;
+        const scale = height / 420;
+        for (let copy = -1; copy <= Math.ceil(width / layer.span) + 1; copy++) {
+          for (const b of layer.buildings) {
+            const x = b.x + copy * layer.span - offset;
+            const w = b.w * scale * (0.6 + layer.depth * 0.6);
+            if (x > width || x + w < 0) continue;
+            const h = b.h * horizon * (0.7 + layer.depth * 0.35);
+            const top = horizon + layer.depth * height * 0.18 - h;
+            context!.fillStyle = layer.base; context!.fillRect(x, top, w, height - top);
+            const cell = 7 + layer.depth * 6, gap = cell * 0.55;
+            let i = 0;
+            for (let wy = top + cell; wy < horizon + layer.depth * 40 - cell; wy += cell + gap) {
+              for (let wx = x + gap; wx < x + w - cell; wx += cell + gap) {
+                const v = b.lit[i++ % b.lit.length];
+                if (v < 0.74) continue;
+                context!.globalAlpha = 0.35 + (v - 0.74) * 2.2;
+                context!.fillStyle = layer.window[i % layer.window.length];
+                context!.fillRect(wx, wy, cell * 0.7, cell * 0.5);
+              }
+            }
+            context!.globalAlpha = 1;
+            if (b.sign) {
+              const on = reduced || Math.sin(time / 380 + b.sign.flicker * 40) > -0.92;
+              if (on) {
+                context!.shadowColor = b.sign.hue; context!.shadowBlur = 18;
+                context!.fillStyle = b.sign.hue;
+                context!.fillRect(x + w * (1 - b.sign.w) / 2, top + h * b.sign.y * 0.5, w * b.sign.w, b.sign.h * scale * 0.5);
+                context!.shadowBlur = 0;
+              }
+            }
+          }
+        }
+      }
+      // Lamps on the line flash past, the nearest thing outside.
+      const lamp = (travelled * 2.4) % 900;
+      for (let x = -lamp; x < width; x += 900) {
+        const glow = context!.createRadialGradient(x, height * 0.3, 0, x, height * 0.3, 140);
+        glow.addColorStop(0, 'rgba(255,170,90,0.28)'); glow.addColorStop(1, 'rgba(255,170,90,0)');
+        context!.fillStyle = glow; context!.fillRect(x - 140, 0, 280, height);
+        context!.fillStyle = '#020306'; context!.fillRect(x - 3, 0, 6, height);
+      }
+      // Rain on the glass, pulled backwards by the speed of the train.
+      context!.strokeStyle = 'rgba(200,225,240,0.22)'; context!.lineWidth = 1;
+      context!.beginPath();
+      for (const d of drops) {
+        const dx = ((d.x * width - travelled * d.s * 0.4) % width + width) % width;
+        const dy = ((d.y * height + time * d.s * 0.02) % height);
+        context!.moveTo(dx, dy); context!.lineTo(dx + d.l * 0.9, dy + d.l * 0.35);
+      }
+      context!.stroke();
+    }
+
+    const tick = (now: number) => {
+      const dt = Math.min(now - last, 64); last = now;
+      boost *= 0.94;
+      travelled += dt * (0.06 + boost);
+      draw(now);
+      frame = visible ? requestAnimationFrame(tick) : 0;
+    };
+    new ResizeObserver(resize).observe(host);
+    resize();
+    if (reduced) continue;
+    let lastScroll = scrollY;
+    addEventListener('scroll', () => { boost = Math.min(boost + Math.abs(scrollY - lastScroll) * 0.004, 1.6); lastScroll = scrollY; }, { passive: true });
+    new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting;
+      if (visible && !frame) { last = performance.now(); frame = requestAnimationFrame(tick); }
+    }).observe(host);
+  }
+</script>

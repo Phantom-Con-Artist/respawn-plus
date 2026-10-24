@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 import { getCollection, render } from 'astro:content';
 import Base from '../../layouts/Base.astro';
+import NightWindow from '../../components/NightWindow.astro';
 import { sortDocs, docBlurbs } from '../../docs';
 
 const docs = sortDocs(await getCollection('docs'));
@@ -9,17 +10,21 @@ const entries = await Promise.all(docs.map(async (d) => ({ id: d.id, title: (awa
 ---
 <Base title="Documentation — Vessel" description="How to use Vessel: your library, mod managers and trainers, display modes, packages and the verified environment." current="docs">
   <header class="page-head">
-    <h1>Documentation</h1>
-    <p>Written alongside the code and published from the same repository, so it describes what Vessel does today.</p>
+    <h1 class="arrive">Documentation</h1>
+    <p class="arrive">Written alongside the code and published from the same repository, so it describes what Vessel does today.</p>
   </header>
-  <div class="band" aria-hidden="true"></div>
-  <section class="downloads" aria-label="Guides">
-    {entries.map((e, i) => (
-      <a class="package" href={`/docs/${e.id}/`} style="text-decoration:none">
-        <h2>{e.title}</h2>
-        <p>{docBlurbs[e.id] ?? ''}</p>
-        <span class="link">Read the guide →</span>
-      </a>
-    ))}
+  <NightWindow size="slim" />
+  <section class="inner" aria-label="Guides">
+    <div class="timetable arrive">
+      {entries.map((e) => (
+        <a class="timetable-row" href={`/docs/${e.id}/`}>
+          <article>
+            <h2>{e.title}</h2>
+            <p>{docBlurbs[e.id] ?? ''}</p>
+            <span class="link">Read the guide</span>
+          </article>
+        </a>
+      ))}
+    </div>
   </section>
 </Base>

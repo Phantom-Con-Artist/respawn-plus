@@ -15,7 +15,6 @@ const titles = await Promise.all(docs.map(async (d) => (await render(d)).heading
 const sections = headings.filter((h) => h.depth === 2);
 ---
 <Base title={`${title} — Vessel docs`} description={`Vessel documentation: ${title}.`} current="docs">
-  <div class="band" aria-hidden="true"></div>
   <div class="docs">
     <nav aria-label="Documentation">
       {docs.map((d, i) => <a href={`/docs/${d.id}/`} aria-current={d.id === doc.id ? 'page' : undefined}>{titles[i]}</a>)}

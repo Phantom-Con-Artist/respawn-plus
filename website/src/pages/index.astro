@@ -1,211 +1,273 @@
 ---
 // SPDX-License-Identifier: MIT
 import Base from '../layouts/Base.astro';
-import Voxel from '../components/Voxel.astro';
+import NightWindow from '../components/NightWindow.astro';
 
 const repo = 'https://github.com/Phantom-Con-Artist/respawn-plus';
-// Facts below come from real runs on the developer's machine (see docs/companion-apps.md).
-const tested = [
-  { name: 'Skyrim Special Edition', fact: 'Version 1.7.104 reached the menu and a new game under GE-Proton 11, in fullscreen set from Vessel.', kind: 'Game', detail: 'SkyrimSE.exe', state: 'Running' },
-  { name: 'SKSE64', fact: 'Script extender 2.3.1 started the game and loaded SkyUI; its in-game menu appeared.', kind: 'Script extender', detail: 'skse64_loader.exe', state: 'Running' },
-  { name: 'Mod Organizer 2', fact: 'Version 2.5.2 opened under Proton, its virtual files worked, and its Run button started Skyrim.', kind: 'Mod manager', detail: 'ModOrganizer.exe', state: 'Ready' },
-  { name: 'A trainer', fact: 'A standalone trainer joined the game’s room and found SkyrimSE.exe as process 400; all ten of its options ran without a crash. Trainer apps like WeMod are added the same way.', kind: 'Trainer', detail: 'Any trainer .exe', state: 'Running' },
+
+// The journey: each station is one part of the product, shown in the real launcher.
+const stations = [
+  { sign: 'Find', title: 'Every game finds its seat.', text: 'Find games looks through your folders for Windows games, or add any .exe yourself. Nothing is copied or changed on the way.', details: ['Scans ~/Games, Downloads and your Steam libraries, or one folder you pick', 'Never runs what it finds and never changes its files', 'Runs through Proton with UMU, system Wine, Lutris Wine or a runner you choose'], shot: 'library', alt: 'The Vessel library, night theme: twelve games with their artwork, how each one starts, playtime and a Play button. Fallout 4 is running.' },
+  { sign: 'Room', title: 'One room for each game.', text: 'Each game gets its own sandbox: a private home, its own Proton or Wine prefix, and checkpoints to roll the room back. Nothing in it touches the rest of your system.', details: ['Private home, /tmp and process, IPC and network namespaces; your own files are not mounted', 'Online or offline, set per game', 'Shared Windows dependencies, such as a Visual C++ runtime, mounted read-only instead of copied', 'A checkpoint before each session; restore the setup and keep your saves'], shot: 'skyrim', alt: 'Skyrim Special Edition’s page in Vessel: its room strip, with Mod Organizer 2 chosen to start the game and a trainer set to open with it.' },
+  { sign: 'Board', title: 'The companions ride together.', text: 'A mod manager, a script extender, a trainer: each one runs inside the game’s room and can see the game, just as on Windows. Choose what starts the game and what opens beside it.', details: ['Every app has a kind: mod manager, script extender, trainer or utility', 'Mod managers and script extenders can start the game', 'Trainers and utilities attach to it, or open with it automatically', 'On Wayland, each app gets its own window'], shot: 'fallout', alt: 'Fallout 4 running in Vessel, started through Mod Organizer 2, with its script extender listed beside it and a Stop room button.' },
+  { sign: 'Depart', title: 'One press. Never a black screen.', text: 'Play starts exactly the setup you chose and shows each part come up, so a quiet minute while Proton prepares the room never looks like something broke.', details: ['Shows the room, the starter and each companion come up', 'A launch log for every game and every app', 'Playtime and sessions for each game', 'Stop room closes everything in it at once'], shot: 'launch', alt: 'The Vessel launch screen: the room’s blocks fill one by one while Skyrim Special Edition starts.' },
+];
+
+// Linux today, against the same moment with Vessel.
+const contrasts = [
+  ['Every game needs its own Wine prefix, made and kept by hand.', 'Each game gets its own prefix and runner, set up for it.'],
+  ['A trainer started on its own cannot see the game’s process.', 'Trainers join the game’s room and find the game, as on Windows.'],
+  ['A mod manager runs in another environment and loses track of the game.', 'Mod Organizer 2, Vortex or any manager shares the game’s prefix and can start it.'],
+  ['One misbehaving tool can reach your whole home folder.', 'Each room is a sandbox with a private home, and checkpoints roll its setup back.'],
+  ['A black window while Proton prepares: did it break?', 'Vessel shows each part of the room come up, then gets out of the way.'],
+];
+
+// Everything in the Beta, as a timetable of short lines.
+const aboard = [
+  ['Finds your games', 'Scans folders for Windows games or imports any .exe.'],
+  ['One room per game', 'A bubblewrap sandbox with one Proton or Wine prefix.'],
+  ['Any companion app', 'Added by its kind, never by its name.'],
+  ['Play through', 'Start the game from a mod manager or script extender.'],
+  ['Opens with the game', 'Switch trainers and tools on to start beside it.'],
+  ['Online or offline', 'Network access chosen per room.'],
+  ['Shared dependencies', 'Windows runtimes imported once, mounted read-only.'],
+  ['Room recovery', 'Checkpoints that restore setup and keep saves.'],
+  ['Separate windows', 'One per app on Wayland, or one window for the room.'],
+  ['Display modes', 'Fullscreen, borderless or windowed in the one-window room.'],
+  ['Playtime', 'Every session timed, with two weeks of daily totals.'],
+  ['Launch logs', 'A log for every launch, readable in the launcher.'],
+  ['Finds your runners', 'UMU, Steam and Flatpak Proton, system and Lutris Wine.'],
+  ['Three themes', 'Milky, Night and Ashen, or follow your desktop.'],
+  ['Keyboard first', 'Search with /, move with arrows, play with Ctrl+Enter.'],
+  ['Local and open', 'A local SQLite library. Rust, Tauri, MIT.'],
+];
+
+// Questions asked at the platform.
+const questions = [
+  ['Do I need Steam?', 'No. Vessel runs a game’s Windows executable directly through Proton (with UMU) or Wine. Games that must be started by Steam itself, for DRM, are not routed through Steam yet.'],
+  ['Does it work with online games and anti-cheat?', 'Not claimed. Kernel anti-cheat is not supported. Vessel is built for single-player games and their mods.'],
+  ['Which mod managers and trainers work?', 'Any app is added by its kind: mod manager, script extender, trainer or utility. Mod Organizer 2, SKSE and a standalone trainer have been run with Skyrim Special Edition. Vortex, WeMod and others are added the same way but are not tested yet.'],
+  ['Will it change my game files?', 'Finding a game copies and changes nothing. Display mode and isolation are applied to the room, never by editing the game’s own settings. Your mod manager changes what it always changes.'],
+  ['Which Linux does it run on?', 'Any distribution. It is tested on Fedora with KDE Plasma on Wayland; secure rooms need a Wayland session to show a window.'],
+  ['Is it a full sandbox?', 'A room is a bubblewrap sandbox with private namespaces and a seccomp filter, not a virtual machine. The kernel, GPU and audio services are still shared.'],
+];
+
+// The four ways a modding player starts a game, as the launcher words them.
+const routes = [
+  { id: 'vanilla', name: 'Vanilla', stops: ['Skyrim Special Edition'], sentence: 'Play starts Skyrim Special Edition.' },
+  { id: 'trainer', name: 'With a trainer', stops: ['Skyrim Special Edition', 'FLiNG Trainer'], sentence: 'Play starts Skyrim Special Edition, then opens FLiNG Trainer.' },
+  { id: 'modded', name: 'Modded', stops: ['Mod Organizer 2', 'Skyrim Special Edition'], sentence: 'Play opens Mod Organizer 2, which starts Skyrim Special Edition.' },
+  { id: 'modded-trainer', name: 'Modded, with a trainer', stops: ['Mod Organizer 2', 'Skyrim Special Edition', 'FLiNG Trainer'], sentence: 'Play opens Mod Organizer 2, which starts Skyrim Special Edition, then opens FLiNG Trainer.' },
+];
+
+// The showcase library, as a departure board. Only the first row has been run end to end.
+const departures = [
+  { game: 'Skyrim Special Edition', via: 'Mod Organizer 2', with: 'FLiNG Trainer', status: 'Tested' },
+  { game: 'Fallout 4', via: 'Mod Organizer 2', with: 'F4SE', status: 'Showcase' },
+  { game: 'Baldur’s Gate 3', via: 'BG3 Mod Manager', with: '—', status: 'Showcase' },
+  { game: 'The Witcher 3: Wild Hunt', via: 'The game', with: 'Script Merger', status: 'Showcase' },
+  { game: 'Cyberpunk 2077', via: 'Vortex', with: 'Trainer', status: 'Showcase' },
+  { game: 'Stardew Valley', via: 'SMAPI', with: '—', status: 'Showcase' },
+  { game: 'Fallout: New Vegas', via: 'Mod Organizer 2', with: 'NVSE', status: 'Showcase' },
+  { game: 'Mount & Blade II: Bannerlord', via: 'Vortex', with: '—', status: 'Showcase' },
+];
+
+// What actually ran, on the developer's machine (see docs/companion-apps.md).
+const log = [
+  ['System', 'Fedora, KDE Plasma on Wayland'],
+  ['Runner', 'GE-Proton 11-11 through UMU 1.4.4'],
+  ['Game', 'Skyrim Special Edition 1.7.104'],
+  ['Mod manager', 'Mod Organizer 2.5.2, its virtual file system loaded'],
+  ['Script extender', 'SKSE 2.3.1, started by Mod Organizer 2'],
+  ['Trainer', 'A standalone trainer, attached to the running game'],
+  ['Windows', 'Each app in its own window on the desktop'],
 ];
 ---
-<Base title="Vessel — Windows games, at home on Linux" description="Vessel runs, plays and configures Windows games and their mods on Linux, the way you would on Windows. Any mod manager, script extender or trainer runs alongside the game. Coming soon as v0.1.0 Beta." current="home">
-  <section class="hero" aria-labelledby="hero-title">
-    <div class="hero-copy reveal">
-      <h1 id="hero-title">Windows games, at home on Linux.</h1>
-      <p class="hero-lead">Run, play and configure your Windows games and their mods the way you would on Windows. Each game gets its own Proton room, and any mod manager or trainer can join it. Coming soon as v0.1.0 Beta.</p>
-      <div class="hero-actions"><a class="button" href={repo}>Watch on GitHub <span class="arrow" aria-hidden="true">→</span></a><span class="status">Free and open source · MIT</span></div>
+<Base title="Vessel · Windows games and their mods, carried home on Linux" description="Vessel runs Windows games on Linux with their mod manager, script extender and trainer in one room. A showcase build, tested with Skyrim Special Edition. Free and open source." current="home">
+  <section class="boarding" aria-labelledby="hero-title">
+    <div class="boarding-top">
+      <h1 id="hero-title" class="arrive">Your games,<br /><span>carried home.</span></h1>
+      <p class="next-sign" aria-label="Next stop: Skyrim Special Edition, through Mod Organizer 2"><span>Next</span><b data-flap="SKYRIM SPECIAL EDITION">SKYRIM SPECIAL EDITION</b><span>via Mod Organizer 2</span></p>
     </div>
-    <div class="stage shutter">
-      <div class="stage-inner">
-        <div class="ui-window" data-ui aria-label="The Vessel launcher showing a game running with its script extender, trainer and mod manager">
-          <div class="ui-row"><div><div class="ui-title">Skyrim Special Edition</div><div class="ui-muted">Windows game · Proton · GE-Proton11-11</div></div><span class="ui-pill">Running</span></div>
-          <div class="ui-card" style="margin-top:16px">
-            <div class="ui-row" style="margin-bottom:6px"><strong>In this room</strong><span class="ui-muted ui-small">One shared container</span></div>
-            <ul class="ui-list">
-              <li><div><div>Skyrim via SKSE64</div><div class="ui-muted ui-small">Script extender · skse64_loader.exe</div></div><span class="ui-state live">Running</span></li>
-              <li><div><div>Trainer</div><div class="ui-muted ui-small">Sees SkyrimSE.exe as process 400</div></div><span class="ui-state live">Running</span></li>
-              <li><div><div>Mod manager</div><div class="ui-muted ui-small">Mod Organizer 2, Vortex or another</div></div><span class="ui-ghost">Open</span></li>
-            </ul>
-          </div>
-          <div class="ui-row" style="margin-top:14px"><span class="ui-muted">Display</span><span class="ui-num">Fullscreen · 1920×1080</span></div>
+    <NightWindow label="Outside the window, a night city slides past under a cyan horizon" />
+    <div class="boarding-foot">
+      <p class="lead">Vessel runs Windows games on Linux with their mod manager, script extender and trainer in one room. Choose how to play once; one press, and they leave together.</p>
+      <div class="actions">
+        <a class="button primary" href={`${repo}/releases`}>Follow releases</a>
+        <a class="button" href="/downloads/">Build from source</a>
+      </div>
+      <p class="showcase-note">Showcase build · tested so far with Skyrim Special Edition</p>
+    </div>
+  </section>
+
+  <section class="statement" data-arrive aria-labelledby="what-title">
+    <h2 id="what-title" class="sr-only">What Vessel is</h2>
+    <svg class="statement-mark" viewBox="89 116 1078 1078" aria-hidden="true"><path class="panel-left" d="M160 186Q160 140 198.1 165.8L569.9 417.6Q603 440 603 480L603 696Q603 742 625.3 782.2L641.7 811.8Q664 852 664 898L664 1130Q664 1170 630.8 1147.7L198.2 857.6Q160 832 160 786Z" /><path class="panel-right" d="M1062.3 197.6Q1096 176 1096 216L1096 836Q1096 882 1057.2 906.7L787.7 1078.5Q754 1100 754 1060L754 852Q754 806 730.2 766.7L680.8 685.3Q657 646 657 600L657 498Q657 458 690.7 436.4Z" /></svg>
+    <p class="statement-text arrive">Vessel is a <strong>Linux launcher for Windows games</strong>. It gives each game <strong>its own room</strong>, a sandbox with one Proton prefix, and lets your <strong>mod manager, script extender and trainer</strong> board that same room, so they work together the way they do on Windows.</p>
+  </section>
+
+  <section class="contrast" aria-labelledby="why-title">
+    <h2 id="why-title" class="arrive">Why it exists.</h2>
+    <div class="contrast-table arrive" role="table" aria-label="Linux today compared with Vessel">
+      <div class="contrast-row contrast-head" role="row"><span role="columnheader">Outside · Linux today</span><span role="columnheader">Inside · with Vessel</span></div>
+      {contrasts.map(([before, after]) => <div class="contrast-row" role="row"><span role="cell">{before}</span><span role="cell">{after}</span></div>)}
+    </div>
+  </section>
+
+  <section class="journey" aria-label="How Vessel works, station by station">
+    {stations.map((s, i) => (
+      <article class="station" data-station={i}>
+        <div class="station-text arrive">
+          <p class="station-sign"><span data-flap={s.sign.toUpperCase()}>{s.sign.toUpperCase()}</span><i>{i + 1} of {stations.length}</i></p>
+          <h2>{s.title}</h2>
+          <p>{s.text}</p>
+          <ul class="spec">{s.details.map((d) => <li>{d}</li>)}</ul>
         </div>
-        <div class="voxel-stage">
-          <Voxel id="hero-voxel" colours={{ top: '#f4fffd', front: '#0c0d0f', side: '#2a9d90' }} />
-          <button class="button vessel-button" id="respawn" type="button">Respawn</button>
+        <figure class="screen arrive">
+          <img src={`/shots/showcase-${s.shot}.webp`} width="2000" height="1250" alt={s.alt} loading={i ? 'lazy' : 'eager'} decoding="async" />
+          <figcaption>The real launcher, shown with a sample library.</figcaption>
+        </figure>
+      </article>
+    ))}
+  </section>
+
+  <section class="section-room" aria-labelledby="inside-title">
+    <div class="section-room-head arrive">
+      <h2 id="inside-title">Inside a room.</h2>
+      <p>A room is one game’s sandbox. Everything you add to the game runs in it, in one Proton container, so the trainer can find the game and the mod manager can start it. What sits outside the walls stays out.</p>
+    </div>
+    <div class="cutaway arrive" aria-label="Diagram of a room">
+      <div class="cut-outside">
+        <p class="cut-label">Outside, not mounted</p>
+        <ul><li>Your home folder</li><li>Other games’ rooms</li><li>The launcher database</li><li>SSH agent and session D-Bus</li></ul>
+      </div>
+      <div class="cut-room">
+        <p class="cut-label">Room · bubblewrap sandbox</p>
+        <p class="cut-note">Private home and /tmp · own PID, IPC and network namespaces · seccomp filter</p>
+        <div class="cut-net"><span>Network</span>pasta, online · or none, offline</div>
+        <div class="cut-container">
+          <p class="cut-label">Proton container · one prefix</p>
+          <ol class="cut-apps">
+            <li style="--i:0"><i>Mod manager</i>Mod Organizer 2</li>
+            <li style="--i:1"><i>Game</i>SkyrimSE.exe with SKSE</li>
+            <li style="--i:2"><i>Trainer</i>FLiNG Trainer</li>
+            <li style="--i:3"><i>Windows</i>wineserver</li>
+          </ol>
+          <div class="cut-shared"><span>Read-only</span>Shared Windows dependencies</div>
         </div>
       </div>
     </div>
   </section>
 
-
-  <section class="why" aria-labelledby="why-title">
-    <div class="why-head reveal">
-      <h2 id="why-title">Why it exists</h2>
-      <p>Proton made Windows games run on Linux. The hard part is everything you do around them on Windows: mod managers like Mod Organizer 2 or Vortex, script extenders and trainers all need the game’s exact environment, and every launcher treats them as strangers.</p>
+  <section class="routes" aria-labelledby="routes-title">
+    <div class="routes-head arrive">
+      <h2 id="routes-title">Four ways to ride.</h2>
+      <p>Vanilla, with a trainer, modded, or modded with a trainer. Pick a route and Vessel says, in one sentence, exactly what Play will do.</p>
     </div>
-    <div class="versus reveal">
-      <div class="side before">
-        <h3>Today, on Linux</h3>
-        <ul>
-          <li>Every game needs its own Wine prefix, made and kept by hand.</li>
-          <li>A trainer started from its own launcher can’t see the game’s process.</li>
-          <li>Mod managers run in a different environment and lose track of the game.</li>
-          <li>Crash logs get overwritten the moment the next app starts.</li>
-        </ul>
-      </div>
-      <div class="side after">
-        <h3>With Vessel</h3>
-        <ul>
-          <li>Each game gets its own prefix and runner automatically.</li>
-          <li>Trainers join the game’s container and find it: process 400, found.</li>
-          <li>Any mod manager or script extender shares the game’s runner and prefix.</li>
-          <li>Every app writes its own launch log, so a crash leaves evidence.</li>
-        </ul>
-      </div>
+    <div class="route-picker" role="radiogroup" aria-label="Route">
+      {routes.map((r, i) => <button type="button" role="radio" aria-checked={i === 3 ? 'true' : 'false'} tabindex={i === 3 ? 0 : -1} data-route={r.id}>{r.name}</button>)}
+    </div>
+    <div class="route-map arrive" aria-live="polite">
+      <ol class="route-line" id="route-line">
+        <li class="stop origin"><span>Room</span></li>
+        {routes[3].stops.map((stop, i) => <li class="stop" style={`--i:${i + 1}`}><span>{stop}</span></li>)}
+      </ol>
+      <p class="route-sentence" id="route-sentence">{routes[3].sentence}</p>
+    </div>
+    <script is:inline type="application/json" id="route-data" set:html={JSON.stringify(routes)} />
+  </section>
+
+  <section class="departures" aria-labelledby="board-title">
+    <div class="board arrive">
+      <div class="board-head"><h2 id="board-title">Departures</h2><p class="board-clock" id="board-clock" aria-hidden="true">23:58</p></div>
+      <table>
+        <thead><tr><th scope="col">Game</th><th scope="col">Starts through</th><th scope="col">Opens with it</th><th scope="col">Status</th></tr></thead>
+        <tbody>
+          {departures.map((d) => (
+            <tr class:list={{ tested: d.status === 'Tested' }}>
+              <td><span class="cell" data-flap={d.game.toUpperCase()}>{d.game.toUpperCase()}</span></td>
+              <td>{d.via}</td>
+              <td>{d.with}</td>
+              <td><span class="status">{d.status}</span></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    <p class="board-note arrive">A showcase library. Only the first row has run end to end; the rest shows how a library looks, not tested support. Any game, mod manager or trainer is added the same way, by what kind of app it is.</p>
+  </section>
+
+  <section class="ran" aria-labelledby="ran-title">
+    <div class="ran-head arrive">
+      <h2 id="ran-title">What has actually run.</h2>
+      <p>Vessel claims only what was run. This is the trip that was taken, on one machine, end to end.</p>
+    </div>
+    <dl class="ticket arrive">
+      {log.map(([k, v]) => <div><dt>{k}</dt><dd>{v}</dd></div>)}
+    </dl>
+  </section>
+
+  <section class="aboard" aria-labelledby="aboard-title">
+    <h2 id="aboard-title" class="arrive">Everything aboard the Beta.</h2>
+    <dl class="aboard-list arrive">
+      {aboard.map(([k, v]) => <div><dt>{k}</dt><dd>{v}</dd></div>)}
+    </dl>
+  </section>
+
+  <section class="questions" aria-labelledby="questions-title">
+    <h2 id="questions-title" class="arrive">Questions at the platform.</h2>
+    <div class="question-list arrive">
+      {questions.map(([q, a], i) => <details open={i === 0}><summary>{q}</summary><p>{a}</p></details>)}
     </div>
   </section>
 
-
-  <div class="plus-band" role="img" aria-label="A field of plus signs that turn as you scroll">
-    {Array.from({ length: 14 }, (_, i) => <span class="spin-plus" data-spin={i % 2 ? '-0.35' : '0.35'} data-phase={i * 13}></span>)}
-  </div>
-
-  <section aria-labelledby="how-title">
-    <div class="fields">
-      <article class="field reveal">
-        <h2 id="how-title">How a game respawns</h2>
-        <div class="card-slot" data-drift><div class="ui-card" data-ui><div class="ui-art">SkyrimSE.exe</div><div style="margin-top:12px"><strong>Skyrim Special Edition</strong><div class="ui-muted ui-small">Found in ~/Downloads</div></div><div style="margin-top:10px"><span class="ui-state">Choose a runtime</span></div></div></div>
-        <div class="text"><p class="clause">First it’s found.</p><p class="note">Find games scans your folders for Windows games. Nothing is copied or changed.</p></div>
-      </article>
-      <article class="field reveal">
-        <span></span>
-        <div class="card-slot" data-drift><div class="ui-card" data-ui><div class="ui-art">SkyrimSE.exe</div><div style="margin-top:12px"><strong>Skyrim Special Edition</strong><div class="ui-muted ui-small">GE-Proton11-11 · prefix game-2</div></div><div style="margin-top:10px"><span class="ui-state">Ready to play</span></div></div></div>
-        <div class="text"><p class="clause">Then it gets a room.</p><p class="note">Its own Wine prefix and runner, kept apart from every other game.</p></div>
-      </article>
-      <article class="field reveal">
-        <span></span>
-        <div class="card-slot" data-drift><div class="ui-card" data-ui><strong>Companion apps</strong><ul class="ui-list" style="margin-top:6px"><li><span>Your mod manager</span><span class="ui-muted ui-small">MO2, Vortex…</span></li><li><span>Script extender</span><span class="ui-muted ui-small">SKSE…</span></li><li><span>Trainer</span><span class="ui-muted ui-small">WeMod…</span></li></ul></div></div>
-        <div class="text"><p class="clause">Then its mods move in.</p><p class="note">Add any mod manager, script extender or trainer. Each one shares the game’s runner and prefix.</p></div>
-      </article>
-      <article class="field reveal">
-        <span></span>
-        <div class="card-slot" data-drift><div class="ui-card" data-ui><div class="ui-row"><strong>Skyrim Special Edition</strong><span class="ui-state live">Running</span></div><ul class="ui-list" style="margin-top:6px"><li><span>SKSE64</span><span class="ui-state live">Running</span></li><li><span>Trainer</span><span class="ui-state live">Running</span></li></ul><div class="ui-mono" style="margin-top:8px">SkyrimSE.exe · process 400</div></div></div>
-        <div class="text"><p class="clause">Then they play together.</p><p class="note">One shared container, so every companion app finds the game, just as on Windows.</p></div>
-      </article>
-    </div>
-  </section>
-
-  <section class="statement" aria-labelledby="does-title">
-    <h2 id="does-title" class="sr-only">What it does</h2>
-    <div class="reveal">
-      <p class="big">Pick <span class="slot" aria-hidden="true"><span class="seg" data-ui><span>Window</span><span class="on">Fullscreen</span></span></span> or borderless for each game before it starts. Every session is timed <span class="slot" aria-hidden="true"><span class="bars"><i style="height:30%"></i><i style="height:55%"></i><i style="height:20%"></i><i class="today" style="height:90%"></i></span></span> and your mod manager works inside the game’s own environment, as it does on Windows.</p>
-    </div>
-    <div class="statement-foot reveal"><div><p>Display modes, playtime and sessions work for every game.</p><a class="button" href="/docs/">Read the docs <span class="arrow" aria-hidden="true">→</span></a></div></div>
-  </section>
-
-
-  <section class="caps" aria-labelledby="caps-title">
-    <h2 id="caps-title" class="reveal">Everything in the Beta</h2>
-    <ul class="cap-list reveal">
-      <li><strong>Finds your games</strong><span>Scans folders for Windows games or imports any .exe. Nothing is copied or changed.</span></li>
-      <li><strong>One room per game</strong><span>An isolated Wine prefix with Proton through UMU, plain Wine, or a runner you pick.</span></li>
-      <li><strong>Any mod manager or trainer</strong><span>Mod Organizer 2, Vortex, WeMod or a standalone trainer: add it and it runs alongside the game.</span></li>
-      <li><strong>Display modes</strong><span>Fullscreen, borderless or windowed at your resolution, for any game, without touching its files.</span></li>
-      <li><strong>Playtime and sessions</strong><span>Every session timed, daily totals for two weeks, and when you last played.</span></li>
-      <li><strong>Launch logs</strong><span>A separate log for every game and app launch, readable from the launcher.</span></li>
-      <li><strong>Finds your runtimes</strong><span>UMU, system Wine, Steam and Flatpak Proton, Lutris Wine and your own folders.</span></li>
-      <li><strong>Local and open</strong><span>Your library stays in a local SQLite file. Rust, Tauri and MIT licensed.</span></li>
-      <li><strong>Play through any manager</strong><span>Play can start the game through any companion app, such as Mod Organizer 2 or Vortex, while trainers and tools run alongside.</span></li>
-      <li class="next"><strong>Next: one-click mod setup</strong><span>Setup helpers that install and configure common mod managers for a game.</span></li>
-    </ul>
-  </section>
-
-  <section class="screens" aria-labelledby="screens-title">
-    <div class="screens-head reveal"><h2 id="screens-title">Real screens from the Beta</h2><p>Playtime is counted per day from every session, including the ones a script extender starts. Light and dark themes follow your desktop.</p></div>
-    <figure class="shot wide reveal"><img class="notch" src="/shots/game-sessions-dark.jpg" width="1087" height="395" alt="A game's session list in the Vessel launcher, dark theme: six sessions with their dates and lengths" loading="lazy" /><figcaption>Every session of one game, with the companion app that started it.</figcaption></figure>
-    <figure class="shot left reveal"><img class="notch" src="/shots/playtime-light.jpg" width="536" height="315" alt="The playtime chart for the last 14 days, light theme, with today's bar in teal" loading="lazy" /><figcaption>The last 14 days, today in teal.</figcaption></figure>
-    <figure class="shot right reveal"><img class="notch" src="/shots/sessions-dark.jpg" width="536" height="433" alt="The recent sessions list on the launcher's home screen, dark theme" loading="lazy" /><figcaption>Recent sessions on the home screen; a dash marks a session whose length was not recorded.</figcaption></figure>
-  </section>
-
-  <section class="showcase" aria-labelledby="tested-title">
-    <div class="plus-wrap">
-      <div class="plus-shape plus-mask" id="plus-shape" data-tone="0" aria-hidden="true"></div>
-      <div class="object" id="object">
-        {tested.map((item, i) => (
-          <div class:list={['ui-card', { on: i === 0 }]} data-ui data-item={i} style="padding:22px">
-            <div class="ui-row"><div class="ui-title">{item.name}</div><span class:list={['ui-state', { live: item.state === 'Running' }]}>{item.state}</span></div>
-            <div class="ui-muted" style="margin-top:4px">{item.kind} · {item.detail}</div>
-            <ul class="ui-list" style="margin-top:12px">
-              <li><span class="ui-muted">Runner</span><span>GE-Proton11-11</span></li>
-              <li><span class="ui-muted">Prefix</span><span class="ui-mono">prefixes/game-2</span></li>
-              <li><span class="ui-muted">Room</span><span>Shared with the game</span></li>
-            </ul>
-          </div>
-        ))}
+  <section class="last-train" aria-labelledby="last-title">
+    <NightWindow size="slim" label="The night city, still passing" />
+    <div class="last-copy arrive">
+      <h2 id="last-title">Ride along when it leaves.</h2>
+      <p>v0.1.0 Beta is on its way. Follow the releases to hear when the first packages for Fedora, Ubuntu and Debian are out, or build it tonight.</p>
+      <div class="actions">
+        <a class="button primary" href={`${repo}/releases`}>Follow releases</a>
+        <a class="button" href="/docs/">Read the docs</a>
       </div>
     </div>
-    <div class="choices reveal" role="group" aria-labelledby="tested-title">
-      <h2 id="tested-title">Tested so far</h2>
-      {tested.map((item, i) => <button type="button" data-choice={i} aria-pressed={i === 0 ? 'true' : 'false'}>{item.name}</button>)}
-    </div>
-    <p class="fact" id="fact" aria-live="polite">{tested[0].fact}</p>
-  </section>
-
-  <section class="cta" aria-labelledby="cta-title">
-    <h2 id="cta-title" class="sr-only">Get notified</h2>
-    <p class="cta-line" style="font-size:clamp(32px, 5.6vw, 88px);line-height:1.08;font-weight:600;letter-spacing:-0.03em">
-      I play on <button class="blank" id="distro" type="button" aria-label="Your Linux distribution: Fedora. Press to change.">Fedora</button>,<br />tell me when it <a class="word" href={`${repo}/releases`}>respawns</a>.
-    </p>
-    <p class="after" id="distro-note">Opens the project’s releases on GitHub; choose Watch, then Releases, to hear when v0.1.0 lands. Fedora is where Vessel is tested first, as an RPM package.</p>
   </section>
 
   <script>
-    // The live thing: the "+" rebuilds itself cube by cube, on load and on demand, and leans toward the cursor.
-    const voxel = document.getElementById('hero-voxel');
-    const respawn = () => { if (!voxel) return; voxel.classList.remove('respawning'); void voxel.getBoundingClientRect(); voxel.classList.add('respawning'); };
-    respawn();
-    document.getElementById('respawn')?.addEventListener('click', respawn);
-    voxel?.addEventListener('click', respawn);
-    if (matchMedia('(pointer: fine)').matches && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      addEventListener('pointermove', (event) => {
-        const x = event.clientX / innerWidth - 0.5, y = event.clientY / innerHeight - 0.5;
-        voxel?.style.setProperty('--ty', (x * 18).toFixed(1) + 'deg');
-        voxel?.style.setProperty('--tx', (-y * 12).toFixed(1) + 'deg');
-      });
-    }
-    // Tested together: choosing a name swaps the launcher card, the plus's tone and the fact.
-    const facts = [...document.querySelectorAll('.choices button')];
-    const cards = [...document.querySelectorAll('#object [data-item]')];
-    const tested = JSON.parse(document.getElementById('tested-data')?.textContent || '[]');
-    for (const button of facts) button.addEventListener('click', () => {
-      const i = Number(button.dataset.choice);
-      facts.forEach((b) => b.setAttribute('aria-pressed', String(b === button)));
-      cards.forEach((c) => c.classList.toggle('on', Number(c.dataset.item) === i));
-      document.getElementById('plus-shape')?.setAttribute('data-tone', String(i));
-      const fact = document.getElementById('fact');
-      if (fact && tested[i]) fact.textContent = tested[i].fact;
-    });
-    // The blank in the closing sentence: which package each distribution will get.
-    const notes = {
-      Fedora: 'Fedora is where Vessel is tested first, as an RPM package.',
-      Ubuntu: 'Ubuntu gets a DEB package with v0.1.0.',
-      Debian: 'Debian gets a DEB package with v0.1.0.',
-      Arch: 'On Arch, build from source for now; the steps are in the docs.',
-      openSUSE: 'openSUSE gets the RPM package with v0.1.0.',
+    // Choose a route: the line redraws its stops and the sentence says what Play will do.
+    const routes = JSON.parse(document.getElementById('route-data')?.textContent || '[]');
+    const buttons = [...document.querySelectorAll<HTMLButtonElement>('[data-route]')];
+    const line = document.getElementById('route-line');
+    const sentence = document.getElementById('route-sentence');
+    const choose = (button: HTMLButtonElement) => {
+      const route = routes.find((r: { id: string }) => r.id === button.dataset.route);
+      if (!route || !line || !sentence) return;
+      for (const b of buttons) { const on = b === button; b.setAttribute('aria-checked', String(on)); b.tabIndex = on ? 0 : -1; }
+      line.replaceChildren(...['Room', ...route.stops].map((name: string, i: number) => {
+        const stop = document.createElement('li');
+        stop.className = 'stop' + (i ? '' : ' origin');
+        stop.style.setProperty('--i', String(i));
+        stop.innerHTML = '<span></span>';
+        stop.querySelector('span')!.textContent = name;
+        return stop;
+      }));
+      line.classList.remove('drawn'); void line.offsetWidth; line.classList.add('drawn');
+      sentence.textContent = route.sentence;
     };
-    const distro = document.getElementById('distro');
-    const names = Object.keys(notes);
-    distro?.addEventListener('click', () => {
-      const next = names[(names.indexOf(distro.textContent ?? 'Fedora') + 1) % names.length];
-      distro.textContent = next;
-      distro.setAttribute('aria-label', 'Your Linux distribution: ' + next + '. Press to change.');
-      const note = document.getElementById('distro-note');
-      if (note) note.textContent = 'Opens the project’s releases on GitHub; choose Watch, then Releases, to hear when v0.1.0 lands. ' + notes[next];
+    for (const b of buttons) b.addEventListener('click', () => choose(b));
+    document.querySelector('.route-picker')?.addEventListener('keydown', (event) => {
+      const e = event as KeyboardEvent;
+      const step = ({ ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 } as Record<string, number>)[e.key];
+      if (!step) return;
+      e.preventDefault();
+      const next = buttons[(buttons.indexOf(document.activeElement as HTMLButtonElement) + step + buttons.length) % buttons.length];
+      next.focus(); choose(next);
     });
+    line?.classList.add('drawn');
+
+    // The board keeps the visitor's own time.
+    const clock = document.getElementById('board-clock');
+    const tickClock = () => { if (clock) clock.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }); };
+    tickClock(); setInterval(tickClock, 15000);
   </script>
-  <script type="application/json" id="tested-data" set:html={JSON.stringify(tested)} />
 </Base>
