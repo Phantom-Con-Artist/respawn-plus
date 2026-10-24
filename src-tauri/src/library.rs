@@ -323,9 +323,9 @@ impl Launcher {
             game.name, game.executable, game.runtime_path, game.prefix
         )
         .map_err(|e| e.to_string())?;
+        // No PROTON_LOG: companions inherit the first app's environment in a shared container and
+        // would reopen (truncate) its steam-<id>.log, destroying the game's crash output.
         command
-            .env("PROTON_LOG", "1")
-            .env("PROTON_LOG_DIR", &log_dir)
             .stdout(Stdio::from(log.try_clone().map_err(|e| e.to_string())?))
             .stderr(Stdio::from(log))
             .stdin(Stdio::null());
@@ -877,5 +877,43 @@ mod tests {
             std::thread::sleep(std::time::Duration::from_millis(20));
         }
         panic!("Launch exit was not recorded");
+    }
+
+    #[test]
+    fn runtime_output_stays_in_the_launch_log_instead_of_a_shared_proton_log() {
+        // Companions joining a shared container inherit the first app's environment. Proton's
+        // own steam-<id>.log is reopened for writing by every app that joins, so the game's crash
+        // output would be truncated by a trainer. Keep each app's output in its own launch log.
+        let temp = tempfile::tempdir().unwrap();
+        let launcher = Launcher::at(temp.path().join("state"), temp.path().join("logs")).unwrap();
+        let exe = temp.path().join("Game.exe");
+        fs::write(&exe, b"MZtest").unwrap();
+        let runner = temp.path().join("wine-test");
+        fs::write(
+            &runner,
+            "#!/bin/sh\necho \"proton-log=[$PROTON_LOG] dir=[$PROTON_LOG_DIR]\"\n",
+        )
+        .unwrap();
+        fs::set_permissions(&runner, fs::Permissions::from_mode(0o755)).unwrap();
+        let game = launcher.import(&exe, None, "manual").unwrap();
+        launcher
+            .save(GameSettings {
+                id: game.id,
+                name: game.name.clone(),
+                runtime_kind: "wine".into(),
+                runtime_path: runner.display().to_string(),
+                arguments: vec![],
+            })
+            .unwrap();
+        launcher.launch(game.id).unwrap();
+        for _ in 0..100 {
+            let log = launcher.log(game.id).unwrap();
+            if log.contains("proton-log=") {
+                assert!(log.contains("proton-log=[] dir=[]"), "{log}");
+                return;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+        panic!("Runtime output was not written to the launch log");
     }
 }

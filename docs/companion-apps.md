@@ -41,10 +41,13 @@ implement PID hiding or a security boundary against untrusted executables.
 
 UMU's current reentry client inherits the first application's working directory
 and environment. A companion's custom working folder applies when it starts the
-container, but is not forwarded when joining an existing one. Respawn+ keeps
-separate launch logs; Proton's own verbose log directory is also inherited from
-the first application. Tools that require their own working directory need
-additional launch-client integration.
+container, but is not forwarded when joining an existing one. Tools that
+require their own working directory need additional launch-client integration.
+
+Runtime output goes only to each app's own Respawn+ launch log. Respawn+ does
+not enable `PROTON_LOG`: a companion joining the room inherits the game's
+environment, and Proton reopens `steam-<id>.log` for writing on every launch, so
+a trainer would truncate the game's log and destroy its crash output.
 
 A script-extender profile counts as a game session: its activity blocks a
 second direct launch of that game and contributes to last-played time. A
