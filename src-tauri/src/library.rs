@@ -35,11 +35,19 @@ pub struct Game {
     pub play_seconds: i64,
     /// Most recent play sessions, newest first.
     pub sessions: Vec<Session>,
+    /// Known play time per UTC day over the last 14 days, oldest first; days without play omitted.
+    pub daily_play: Vec<DayPlay>,
     pub display_mode: String,
     pub display_width: Option<u32>,
     pub display_height: Option<u32>,
     /// Whether Respawn+ can set this game's window mode (see `display`).
     pub display_supported: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct DayPlay {
+    pub date: String,
+    pub seconds: i64,
 }
 
 /// A game launch, direct or through a script extender. Companion-only launches are not play.
@@ -156,10 +164,11 @@ impl Launcher {
                 let executable: String = row.get::<_, Option<String>>(2)?.unwrap_or_default();
                 let args: String = row.get(6)?;
                 let launch_id: Option<i64> = row.get(9)?;
-                let (play_seconds, sessions) = sessions_for_game(&db, row.get(0)?)?;
+                let (play_seconds, sessions, daily_play) = sessions_for_game(&db, row.get(0)?)?;
                 Ok(Game {
                     play_seconds,
                     sessions,
+                    daily_play,
                     id: row.get(0)?,
                     name: row.get(1)?,
                     available: Path::new(&executable).is_file(),
@@ -548,7 +557,10 @@ const PLAY_SESSIONS: &str = "FROM launches l LEFT JOIN tools t ON t.id=l.tool_id
 const SESSION_SECONDS: &str = "CASE WHEN l.state IN ('finished','failed') AND l.ended_at IS NOT NULL THEN CAST(ROUND((julianday(l.ended_at)-julianday(l.started_at))*86400) AS INTEGER) WHEN l.state IN ('starting','running') THEN CAST(ROUND((julianday('now')-julianday(l.started_at))*86400) AS INTEGER) END";
 const RECENT_SESSIONS: usize = 8;
 
-fn sessions_for_game(db: &Connection, game_id: i64) -> rusqlite::Result<(i64, Vec<Session>)> {
+fn sessions_for_game(
+    db: &Connection,
+    game_id: i64,
+) -> rusqlite::Result<(i64, Vec<Session>, Vec<DayPlay>)> {
     let total: i64 = db.query_row(
         &format!("SELECT COALESCE(SUM({SESSION_SECONDS}),0) {PLAY_SESSIONS}"),
         [game_id],
@@ -568,7 +580,18 @@ fn sessions_for_game(db: &Connection, game_id: i64) -> rusqlite::Result<(i64, Ve
             })
         })?
         .collect::<rusqlite::Result<Vec<_>>>()?;
-    Ok((total, sessions))
+    let mut stmt = db.prepare(&format!(
+        "SELECT date(l.started_at),SUM({SESSION_SECONDS}) {PLAY_SESSIONS} AND l.started_at>=date('now','-13 days') GROUP BY 1 HAVING SUM({SESSION_SECONDS})>0 ORDER BY 1"
+    ))?;
+    let daily = stmt
+        .query_map([game_id], |r| {
+            Ok(DayPlay {
+                date: r.get(0)?,
+                seconds: r.get(1)?,
+            })
+        })?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+    Ok((total, sessions, daily))
 }
 
 fn tools_for_game(db: &Connection, game_id: i64) -> rusqlite::Result<Vec<Tool>> {
@@ -1135,5 +1158,33 @@ mod tests {
         assert!(read_log(&launch.log_path)
             .unwrap()
             .contains("Display: borderless 2560×1440"));
+    }
+
+    #[test]
+    fn daily_play_covers_the_last_fourteen_days_including_older_sessions() {
+        let temp = tempfile::tempdir().unwrap();
+        let launcher = Launcher::at(temp.path().join("state"), temp.path().join("logs")).unwrap();
+        let exe = temp.path().join("Game.exe");
+        fs::write(&exe, b"MZtest").unwrap();
+        let game = launcher.import(&exe, None, "manual").unwrap();
+        let db = launcher.connection().unwrap();
+        // Ten 10-minute sessions yesterday: more than the session list keeps, all in the daily total.
+        for _ in 0..10 {
+            db.execute("INSERT INTO launches (game_id,state,log_path,started_at,ended_at) VALUES (?1,'finished','/log',datetime('now','-1 day','start of day','+12 hours'),datetime('now','-1 day','start of day','+12 hours','+10 minutes'))", [game.id]).unwrap();
+        }
+        db.execute("INSERT INTO launches (game_id,state,log_path,started_at,ended_at) VALUES (?1,'finished','/log',datetime('now','-30 days'),datetime('now','-30 days','+1 hour'))", [game.id]).unwrap();
+        let game = launcher.games().unwrap().remove(0);
+        let yesterday: String = db
+            .query_row("SELECT date('now','-1 day')", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(game.sessions.len(), 8);
+        assert_eq!(
+            game.daily_play,
+            vec![DayPlay {
+                date: yesterday,
+                seconds: 6000
+            }]
+        );
+        assert_eq!(game.play_seconds, 6000 + 3600);
     }
 }

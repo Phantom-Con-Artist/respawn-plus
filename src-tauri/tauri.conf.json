@@ -1,11 +1,11 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Respawn+",
+  "productName": "Respawn+ Launcher",
   "mainBinaryName": "respawn-plus",
   "version": "0.1.0",
   "identifier": "dev.respawnplus.launcher",
   "build": { "beforeDevCommand": "npm run dev", "devUrl": "http://localhost:1420", "beforeBuildCommand": "npm run build", "frontendDist": "../dist" },
-  "app": { "windows": [{ "label": "main", "title": "Respawn+", "width": 1440, "height": 960, "maximized": true, "decorations": false, "minWidth": 720, "minHeight": 560 }], "security": { "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src ipc: http://ipc.localhost; img-src 'self' data: https://shared.akamai.steamstatic.com" } },
+  "app": { "windows": [{ "label": "main", "title": "Respawn+ Launcher", "width": 1440, "height": 960, "maximized": true, "decorations": false, "minWidth": 720, "minHeight": 560 }], "security": { "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src ipc: http://ipc.localhost; img-src 'self' data: https://shared.akamai.steamstatic.com" } },
   "bundle": {
     "active": true,
     "targets": ["deb", "rpm"],
