@@ -1,0 +1,756 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-24T18:20:24.684035+00:00",
+  "title": "Design System: Vessel",
+  "extensions": {
+    "colorMeta": {
+      "cyan": {
+        "role": "primary",
+        "displayName": "Live Cyan",
+        "canonical": "#18e6e4",
+        "oklch": "oklch(83.8% 0.141 193.7)",
+        "tonalRamp": [
+          "#001519",
+          "#003436",
+          "#005454",
+          "#007575",
+          "#009897",
+          "#19bcba",
+          "#54e2df",
+          "#7fffff"
+        ]
+      },
+      "on-cyan": {
+        "role": "primary",
+        "displayName": "Deep Teal Ink",
+        "canonical": "#0b1c1f",
+        "oklch": "oklch(21.3% 0.023 210.2)",
+        "tonalRamp": [
+          "#010e11",
+          "#17282b",
+          "#344649",
+          "#526569",
+          "#73868a",
+          "#95a9ad",
+          "#b9ced2",
+          "#ddf3f7"
+        ]
+      },
+      "milky-ground": {
+        "role": "neutral",
+        "displayName": "Milky Ground",
+        "canonical": "#f3f2ee",
+        "oklch": "oklch(96.1% 0.005 95.1)",
+        "tonalRamp": [
+          "#0c0b09",
+          "#262522",
+          "#43423f",
+          "#62615e",
+          "#83827f",
+          "#a6a5a1",
+          "#cac9c5",
+          "#efeeea"
+        ]
+      },
+      "milky-surface": {
+        "role": "neutral",
+        "displayName": "Milky Surface",
+        "canonical": "#fbfbf9",
+        "oklch": "oklch(98.8% 0.003 106.4)",
+        "tonalRamp": [
+          "#0b0b0a",
+          "#252524",
+          "#424240",
+          "#616160",
+          "#828281",
+          "#a5a5a3",
+          "#c9c9c7",
+          "#eeeeec"
+        ]
+      },
+      "milky-raised": {
+        "role": "neutral",
+        "displayName": "Milky Raised",
+        "canonical": "#e8e7e1",
+        "oklch": "oklch(92.7% 0.008 98.9)",
+        "tonalRamp": [
+          "#0c0b08",
+          "#262521",
+          "#43423d",
+          "#62615c",
+          "#83827d",
+          "#a6a59f",
+          "#cac9c3",
+          "#f0efe9"
+        ]
+      },
+      "milky-line": {
+        "role": "neutral",
+        "displayName": "Milky Line",
+        "canonical": "#dcdad3",
+        "oklch": "oklch(88.8% 0.010 93.6)",
+        "tonalRamp": [
+          "#0c0b07",
+          "#272520",
+          "#44423c",
+          "#63615b",
+          "#84827c",
+          "#a7a59e",
+          "#cbc9c2",
+          "#f0eee7"
+        ]
+      },
+      "milky-control": {
+        "role": "neutral",
+        "displayName": "Milky Control",
+        "canonical": "#b9b7ae",
+        "oklch": "oklch(77.8% 0.013 96.5)",
+        "tonalRamp": [
+          "#0d0b06",
+          "#27251e",
+          "#44423b",
+          "#636159",
+          "#84827a",
+          "#a7a59c",
+          "#cbc9c0",
+          "#f1efe5"
+        ]
+      },
+      "milky-text": {
+        "role": "neutral",
+        "displayName": "Milky Text",
+        "canonical": "#141818",
+        "oklch": "oklch(20.5% 0.006 196.7)",
+        "tonalRamp": [
+          "#080c0c",
+          "#222626",
+          "#3e4343",
+          "#5d6262",
+          "#7e8383",
+          "#a1a6a6",
+          "#c5caca",
+          "#eaf0f0"
+        ]
+      },
+      "milky-muted": {
+        "role": "neutral",
+        "displayName": "Milky Muted",
+        "canonical": "#4f5553",
+        "oklch": "oklch(44.3% 0.008 174.0)",
+        "tonalRamp": [
+          "#080c0b",
+          "#212625",
+          "#3e4342",
+          "#5d6361",
+          "#7e8482",
+          "#a0a7a4",
+          "#c4cbc9",
+          "#e9f0ee"
+        ]
+      },
+      "milky-faint": {
+        "role": "neutral",
+        "displayName": "Milky Faint",
+        "canonical": "#636967",
+        "oklch": "oklch(51.5% 0.008 174.1)",
+        "tonalRamp": [
+          "#080c0b",
+          "#212625",
+          "#3e4342",
+          "#5d6361",
+          "#7e8482",
+          "#a0a7a4",
+          "#c4cbc9",
+          "#e9f0ee"
+        ]
+      },
+      "milky-negative": {
+        "role": "neutral",
+        "displayName": "Milky Negative",
+        "canonical": "#b4232a",
+        "oklch": "oklch(50.2% 0.180 24.6)",
+        "tonalRamp": [
+          "#2d0000",
+          "#510002",
+          "#751f1f",
+          "#9a413e",
+          "#c0635e",
+          "#e7867f",
+          "#ffaaa2",
+          "#ffcfc6"
+        ]
+      },
+      "milky-mark-deep": {
+        "role": "neutral",
+        "displayName": "Milky Mark Deep",
+        "canonical": "#0b1c1f",
+        "oklch": "oklch(21.3% 0.023 210.2)",
+        "tonalRamp": [
+          "#010e11",
+          "#17282b",
+          "#344649",
+          "#526569",
+          "#73868a",
+          "#95a9ad",
+          "#b9ced2",
+          "#ddf3f7"
+        ]
+      },
+      "night-ground": {
+        "role": "neutral",
+        "displayName": "Night Ground",
+        "canonical": "#0a1012",
+        "oklch": "oklch(16.8% 0.010 220.2)",
+        "tonalRamp": [
+          "#070c0e",
+          "#202629",
+          "#3c4346",
+          "#5b6365",
+          "#7c8487",
+          "#9ea7a9",
+          "#c2cbce",
+          "#e7f0f3"
+        ]
+      },
+      "night-surface": {
+        "role": "neutral",
+        "displayName": "Night Surface",
+        "canonical": "#0f171a",
+        "oklch": "oklch(19.8% 0.013 222.9)",
+        "tonalRamp": [
+          "#060c0f",
+          "#1e272a",
+          "#3b4447",
+          "#596367",
+          "#7a8488",
+          "#9da7ab",
+          "#c0cbcf",
+          "#e5f1f5"
+        ]
+      },
+      "night-raised": {
+        "role": "neutral",
+        "displayName": "Night Raised",
+        "canonical": "#172124",
+        "oklch": "oklch(23.9% 0.015 218.1)",
+        "tonalRamp": [
+          "#050d0f",
+          "#1d272a",
+          "#394447",
+          "#586467",
+          "#798588",
+          "#9ba8ab",
+          "#bfccd0",
+          "#e4f1f5"
+        ]
+      },
+      "night-line": {
+        "role": "neutral",
+        "displayName": "Night Line",
+        "canonical": "#1f2b2e",
+        "oklch": "oklch(27.9% 0.017 214.7)",
+        "tonalRamp": [
+          "#040d10",
+          "#1b272a",
+          "#384548",
+          "#576467",
+          "#778589",
+          "#99a8ac",
+          "#bdccd0",
+          "#e2f2f6"
+        ]
+      },
+      "night-control": {
+        "role": "neutral",
+        "displayName": "Night Control",
+        "canonical": "#3b4a4f",
+        "oklch": "oklch(39.8% 0.021 220.1)",
+        "tonalRamp": [
+          "#020d11",
+          "#1a282c",
+          "#36454a",
+          "#55646a",
+          "#75868b",
+          "#97a8ae",
+          "#bbcdd3",
+          "#e0f2f8"
+        ]
+      },
+      "night-text": {
+        "role": "neutral",
+        "displayName": "Night Text",
+        "canonical": "#edf2f1",
+        "oklch": "oklch(95.7% 0.005 183.0)",
+        "tonalRamp": [
+          "#090c0b",
+          "#222625",
+          "#3f4342",
+          "#5e6261",
+          "#7f8382",
+          "#a1a6a5",
+          "#c5cac9",
+          "#ebf0ef"
+        ]
+      },
+      "night-muted": {
+        "role": "neutral",
+        "displayName": "Night Muted",
+        "canonical": "#aab5b3",
+        "oklch": "oklch(76.4% 0.013 184.0)",
+        "tonalRamp": [
+          "#060d0c",
+          "#1e2726",
+          "#3b4443",
+          "#5a6462",
+          "#7a8583",
+          "#9da8a6",
+          "#c1ccca",
+          "#e6f1ef"
+        ]
+      },
+      "night-faint": {
+        "role": "neutral",
+        "displayName": "Night Faint",
+        "canonical": "#8d9997",
+        "oklch": "oklch(67.3% 0.014 184.9)",
+        "tonalRamp": [
+          "#050d0c",
+          "#1e2726",
+          "#3a4543",
+          "#596462",
+          "#798583",
+          "#9ca8a6",
+          "#c0ccca",
+          "#e5f2f0"
+        ]
+      },
+      "night-negative": {
+        "role": "neutral",
+        "displayName": "Night Negative",
+        "canonical": "#f07178",
+        "oklch": "oklch(70.1% 0.157 18.6)",
+        "tonalRamp": [
+          "#2d0000",
+          "#50000c",
+          "#751e28",
+          "#9a4046",
+          "#bf6266",
+          "#e68588",
+          "#ffa9ab",
+          "#ffcecf"
+        ]
+      },
+      "night-mark-deep": {
+        "role": "neutral",
+        "displayName": "Night Mark Deep",
+        "canonical": "#2f6f74",
+        "oklch": "oklch(50.2% 0.065 202.3)",
+        "tonalRamp": [
+          "#001117",
+          "#002e33",
+          "#004c51",
+          "#2c6c71",
+          "#4f8e93",
+          "#72b2b7",
+          "#96d6db",
+          "#bbfcff"
+        ]
+      },
+      "ashen-ground": {
+        "role": "neutral",
+        "displayName": "Ashen Ground",
+        "canonical": "#4a4d4c",
+        "oklch": "oklch(41.7% 0.004 174.3)",
+        "tonalRamp": [
+          "#090c0b",
+          "#232625",
+          "#404342",
+          "#5f6261",
+          "#808382",
+          "#a2a6a5",
+          "#c6cac9",
+          "#ecefee"
+        ]
+      },
+      "ashen-surface": {
+        "role": "neutral",
+        "displayName": "Ashen Surface",
+        "canonical": "#545756",
+        "oklch": "oklch(45.4% 0.004 174.3)",
+        "tonalRamp": [
+          "#090c0b",
+          "#232625",
+          "#404342",
+          "#5f6261",
+          "#808382",
+          "#a2a6a5",
+          "#c6cac9",
+          "#ecefee"
+        ]
+      },
+      "ashen-raised": {
+        "role": "neutral",
+        "displayName": "Ashen Raised",
+        "canonical": "#5f6261",
+        "oklch": "oklch(49.3% 0.004 174.3)",
+        "tonalRamp": [
+          "#090c0b",
+          "#232625",
+          "#404342",
+          "#5f6261",
+          "#808382",
+          "#a2a6a5",
+          "#c6cac9",
+          "#ecefee"
+        ]
+      },
+      "ashen-line": {
+        "role": "neutral",
+        "displayName": "Ashen Line",
+        "canonical": "#6a6d6c",
+        "oklch": "oklch(53.2% 0.004 174.4)",
+        "tonalRamp": [
+          "#090c0b",
+          "#232625",
+          "#404342",
+          "#5f6261",
+          "#808382",
+          "#a3a6a5",
+          "#c7cac9",
+          "#ecefee"
+        ]
+      },
+      "ashen-control": {
+        "role": "neutral",
+        "displayName": "Ashen Control",
+        "canonical": "#a8abaa",
+        "oklch": "oklch(73.8% 0.004 174.4)",
+        "tonalRamp": [
+          "#0a0c0b",
+          "#232625",
+          "#404342",
+          "#5f6261",
+          "#808382",
+          "#a3a6a5",
+          "#c7cac9",
+          "#ecefee"
+        ]
+      },
+      "ashen-text": {
+        "role": "neutral",
+        "displayName": "Ashen Text",
+        "canonical": "#f4f5f4",
+        "oklch": "oklch(96.9% 0.002 145.6)",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242524",
+          "#414241",
+          "#616161",
+          "#828282",
+          "#a4a5a4",
+          "#c8c9c8",
+          "#eeefee"
+        ]
+      },
+      "ashen-muted": {
+        "role": "neutral",
+        "displayName": "Ashen Muted",
+        "canonical": "#e0e2e1",
+        "oklch": "oklch(91.1% 0.003 165.1)",
+        "tonalRamp": [
+          "#0a0b0b",
+          "#242525",
+          "#414242",
+          "#606261",
+          "#818382",
+          "#a4a5a4",
+          "#c8cac9",
+          "#edefee"
+        ]
+      },
+      "ashen-faint": {
+        "role": "neutral",
+        "displayName": "Ashen Faint",
+        "canonical": "#cfd2d1",
+        "oklch": "oklch(86.1% 0.004 174.5)",
+        "tonalRamp": [
+          "#0a0c0b",
+          "#232625",
+          "#404342",
+          "#5f6261",
+          "#808382",
+          "#a3a6a5",
+          "#c7cac9",
+          "#ecefee"
+        ]
+      },
+      "ashen-negative": {
+        "role": "neutral",
+        "displayName": "Ashen Negative",
+        "canonical": "#ffb3b3",
+        "oklch": "oklch(83.9% 0.089 19.1)",
+        "tonalRamp": [
+          "#260000",
+          "#470b13",
+          "#692b2f",
+          "#8d4b4d",
+          "#b16c6d",
+          "#d78e8f",
+          "#feb2b2",
+          "#ffd7d7"
+        ]
+      },
+      "ashen-mark-deep": {
+        "role": "neutral",
+        "displayName": "Ashen Mark Deep",
+        "canonical": "#1d4e52",
+        "oklch": "oklch(39.3% 0.052 202.6)",
+        "tonalRamp": [
+          "#001115",
+          "#002c30",
+          "#194a4e",
+          "#3a6a6e",
+          "#5c8c90",
+          "#7eafb3",
+          "#a1d4d8",
+          "#c6fafe"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "title": {
+        "displayName": "Title",
+        "purpose": "Page names and the launch heading."
+      },
+      "figure": {
+        "displayName": "Figure",
+        "purpose": "Dashboard numbers."
+      },
+      "play": {
+        "displayName": "Play",
+        "purpose": "The Play label in its square."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Panel heads and setting labels."
+      },
+      "lead": {
+        "displayName": "Lead",
+        "purpose": "Sublines, Library row names, the setup sentence, search."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default text."
+      },
+      "block-name": {
+        "displayName": "Block Name",
+        "purpose": "Name inside a strip block, two lines max."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Block kind and state, strip group labels, table heads, fact terms."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "File paths and logs only."
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "step",
+        "value": "steps(2, jump-none)",
+        "purpose": "Every state change: two frames, no easing."
+      },
+      {
+        "name": "step-time",
+        "value": "90ms",
+        "purpose": "Duration of background, border and colour changes on controls and blocks."
+      },
+      {
+        "name": "busy-loop",
+        "value": "720ms steps(2, jump-none) infinite",
+        "purpose": "Mark panels (offset 360ms) and the active launch step while something is starting."
+      },
+      {
+        "name": "boot-exit",
+        "value": "opacity 180ms steps(2, jump-none)",
+        "purpose": "Boot screen leaving."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "animation: none; transition: none",
+        "purpose": "prefers-reduced-motion: reduce removes all motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "narrow",
+        "value": "1100px"
+      },
+      {
+        "name": "compact",
+        "value": "760px"
+      }
+    ],
+    "themes": {
+      "mechanism": "data-theme on the root element: milky (default), night, ashen; Settings also offers Match system (milky or night by prefers-color-scheme).",
+      "roles": [
+        "ground",
+        "surface",
+        "raised",
+        "line",
+        "control",
+        "text",
+        "muted",
+        "faint",
+        "negative",
+        "mark-deep"
+      ]
+    },
+    "layout": {
+      "rail": "232px",
+      "bar": "40px",
+      "control-h": "36px",
+      "block": "112px",
+      "pad": "40px / 28px at <=1100px / 16px at <=760px"
+    }
+  },
+  "components": [
+    {
+      "name": "Button",
+      "kind": "button",
+      "refersTo": "button",
+      "description": "Default action: flat, 36px, 2px corners, one tone step on hover.",
+      "html": "<button class=\"ds-btn\">Add app</button>",
+      "css": ".ds-btn { display:inline-flex; align-items:center; gap:8px; height:36px; padding:0 14px; border:1px solid var(--control, #b9b7ae); border-radius:2px; background:var(--surface, #fbfbf9); color:var(--text, #141818); font:500 14px/1 'Hanken Grotesk Variable', system-ui, sans-serif; cursor:pointer; transition: background-color 90ms steps(2, jump-none); } .ds-btn:hover { background:var(--raised, #e8e7e1); } .ds-btn:active { transform:translateY(1px); } .ds-btn:focus-visible { outline:2px solid var(--text, #141818); outline-offset:2px; }"
+    },
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Text-colour fill for the main non-Play action in a view.",
+      "html": "<button class=\"ds-btn-primary\">Save</button>",
+      "css": ".ds-btn-primary { height:36px; padding:0 14px; border:1px solid var(--text, #141818); border-radius:2px; background:var(--text, #141818); color:var(--ground, #f3f2ee); font:500 14px/1 'Hanken Grotesk Variable', system-ui, sans-serif; cursor:pointer; transition: background-color 90ms steps(2, jump-none); } .ds-btn-primary:hover { background:var(--muted, #4f5553); border-color:var(--muted, #4f5553); } .ds-btn-primary:focus-visible { outline:2px solid var(--text, #141818); outline-offset:2px; }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Destructive action, outlined in negative and set apart from the others.",
+      "html": "<button class=\"ds-btn-danger\">Remove</button>",
+      "css": ".ds-btn-danger { height:36px; padding:0 14px; border:1px solid var(--negative, #b4232a); border-radius:2px; background:transparent; color:var(--negative, #b4232a); font:500 14px/1 'Hanken Grotesk Variable', system-ui, sans-serif; cursor:pointer; } .ds-btn-danger:hover { background:color-mix(in srgb, var(--negative, #b4232a) 10%, transparent); } .ds-btn-danger:focus-visible { outline:2px solid var(--text, #141818); outline-offset:2px; }"
+    },
+    {
+      "name": "Play",
+      "kind": "button",
+      "refersTo": "play",
+      "description": "The 112px cyan square at the end of the strip; runs exactly what the strip shows.",
+      "html": "<button class=\"ds-play\"><svg viewBox=\"0 0 16 16\" width=\"18\" height=\"18\" aria-hidden=\"true\"><path d=\"M4 2.5v11l9-5.5z\" fill=\"currentColor\"/></svg>Play</button>",
+      "css": ".ds-play { display:inline-flex; align-items:center; justify-content:center; gap:10px; width:112px; height:112px; border:0; border-radius:2px; background:var(--cyan, #18e6e4); color:var(--on-cyan, #0b1c1f); font:650 20px/1 'Hanken Grotesk Variable', system-ui, sans-serif; letter-spacing:-0.01em; cursor:pointer; transition: background-color 90ms steps(2, jump-none); } .ds-play:hover { background:color-mix(in srgb, var(--cyan, #18e6e4) 82%, var(--text, #141818)); } .ds-play:active { transform:translateY(1px); } .ds-play:focus-visible { outline:2px solid var(--text, #141818); outline-offset:2px; }"
+    },
+    {
+      "name": "Strip Block",
+      "kind": "custom",
+      "refersTo": "block",
+      "description": "A 112px square for one part of the setup: kind, name, state. Cyan when chosen or on, dashed when off.",
+      "html": "<div class=\"ds-strip\"><button class=\"ds-block\"><span class=\"ds-k\">Game</span><span class=\"ds-n\">Game</span><span class=\"ds-k\">Starts directly</span></button><button class=\"ds-block ds-on\" aria-checked=\"true\"><span class=\"ds-k\">Mod manager</span><span class=\"ds-n\">Manager</span><span class=\"ds-k\">Starts the game</span></button><button class=\"ds-block ds-off\"><span class=\"ds-k\">Trainer</span><span class=\"ds-n\">Trainer</span><span class=\"ds-k\">Off</span></button></div>",
+      "css": ".ds-strip { display:flex; gap:8px; padding:20px; background:var(--surface, #fbfbf9); border:1px solid var(--line, #dcdad3); border-radius:2px; } .ds-block { display:grid; grid-template-rows:auto 1fr auto; gap:4px; width:112px; height:112px; padding:8px; text-align:left; border:1px solid var(--control, #b9b7ae); border-radius:2px; background:var(--ground, #f3f2ee); color:var(--text, #141818); font-family:'Hanken Grotesk Variable', system-ui, sans-serif; cursor:pointer; transition: background-color 90ms steps(2, jump-none), border-color 90ms steps(2, jump-none); } .ds-block:hover { border-color:var(--text, #141818); } .ds-block:focus-visible { outline:2px solid var(--text, #141818); outline-offset:2px; } .ds-k { font-size:12px; color:var(--muted, #4f5553); } .ds-n { font-size:13px; font-weight:600; line-height:1.25; } .ds-on { background:var(--cyan, #18e6e4); border-color:var(--cyan, #18e6e4); color:var(--on-cyan, #0b1c1f); } .ds-on .ds-k { color:var(--on-cyan, #0b1c1f); } .ds-off { border-style:dashed; background:transparent; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Surface field, control border, text-colour focus ring.",
+      "html": "<label class=\"ds-field\">Name in library<input class=\"ds-input\" value=\"Game\"></label>",
+      "css": ".ds-field { display:grid; gap:6px; font:500 14px/1.45 'Hanken Grotesk Variable', system-ui, sans-serif; color:var(--text, #141818); } .ds-input { min-height:36px; padding:7px 10px; border:1px solid var(--control, #b9b7ae); border-radius:2px; background:var(--surface, #fbfbf9); color:var(--text, #141818); font:400 14px 'Hanken Grotesk Variable', system-ui, sans-serif; caret-color:var(--text, #141818); } .ds-input:focus-visible { outline:2px solid var(--text, #141818); outline-offset:2px; }"
+    },
+    {
+      "name": "Rail Navigation",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "Left rail links; current page fills one tone step.",
+      "html": "<nav class=\"ds-nav\"><a href=\"#\" aria-current=\"page\">Library<span class=\"ds-count\">2</span></a><a href=\"#\">Dependencies</a><a href=\"#\">Settings</a></nav>",
+      "css": ".ds-nav { display:grid; gap:2px; width:208px; font:500 14px 'Hanken Grotesk Variable', system-ui, sans-serif; } .ds-nav a { display:flex; align-items:center; height:34px; padding:0 10px; border-radius:2px; color:var(--muted, #4f5553); text-decoration:none; } .ds-nav a:hover, .ds-nav a[aria-current=page] { color:var(--text, #141818); background:var(--raised, #e8e7e1); } .ds-nav a:focus-visible { outline:2px solid var(--text, #141818); outline-offset:2px; } .ds-count { margin-left:auto; color:var(--faint, #636967); font-weight:400; font-variant-numeric:tabular-nums; }"
+    },
+    {
+      "name": "Tabs",
+      "kind": "nav",
+      "refersTo": "tab",
+      "description": "Underline tabs on a full-width rule.",
+      "html": "<div class=\"ds-tabs\" role=\"tablist\"><button role=\"tab\" aria-selected=\"true\">Dashboard</button><button role=\"tab\">Companion apps</button><button role=\"tab\">Room</button></div>",
+      "css": ".ds-tabs { display:flex; gap:24px; border-bottom:1px solid var(--line, #dcdad3); } .ds-tabs button { position:relative; height:40px; padding:0; border:0; background:none; color:var(--muted, #4f5553); font:500 14px 'Hanken Grotesk Variable', system-ui, sans-serif; cursor:pointer; } .ds-tabs button:hover, .ds-tabs [aria-selected=true] { color:var(--text, #141818); } .ds-tabs [aria-selected=true]::after { content:''; position:absolute; left:0; right:0; bottom:-1px; height:2px; background:var(--text, #141818); } .ds-tabs button:focus-visible { outline:2px solid var(--text, #141818); outline-offset:2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Memory-Card Strip",
+    "overview": "Vessel reads like a console's save screen set in Swiss type: a game's setup is a row of square blocks, read left to right, and the cyan square at the end runs exactly what the row shows. Everything around the strip is a flat field in one grotesk, flush left, ruled by 1px lines. The system is quiet on purpose so that the one saturated colour can mean one thing: this is chosen, or this is running.\n\nDensity is that of a desktop tool, not a storefront. The Library is a ruled list of rows, not a cover grid; the game page puts the strip at full canvas width above three tabs (Dashboard, Companion apps, Room). Three palettes, Milky, Night and Ashen, share one structure and swap only values. Depth comes from tone steps and lines, never from shadow; corners are 2px everywhere; state changes step in two frames instead of easing.\n\nThe logo mark is two folded panels, cyan and a palette-specific deep teal. It is the only illustration in the interface besides game art, and it is the one thing that animates while something is starting.",
+    "keyCharacteristics": [
+      "One grotesk (Hanken Grotesk Variable), flush left, weights 400 to 650.",
+      "Three flat palettes on one set of role tokens; cyan shared across all three.",
+      "Cyan only on chosen or running things; everything else is text colour on ground.",
+      "112px square blocks as the signature unit; Play is the same square.",
+      "2px corners, 1px lines, no shadows.",
+      "Two-frame stepped motion; reduced motion removes it all."
+    ],
+    "rules": [
+      {
+        "name": "The Live Cyan Rule",
+        "body": "Cyan marks what is chosen or running, nothing else: a selected or switched-on block, Play, running dots, a finished launch step. Headings, links, focus, hover and decoration never use it.",
+        "section": "colors"
+      },
+      {
+        "name": "The Text-Colour Focus Rule",
+        "body": "Focus rings (2px solid, 2px offset), the caret, links, native radios and checkboxes, and the selected tab all use the text colour, so cyan keeps its single meaning.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Structure Rule",
+        "body": "A palette changes values, never roles or layout. A new palette defines all ten role tokens and keeps cyan and deep teal ink as they are.",
+        "section": "colors"
+      },
+      {
+        "name": "The Sentence-Case Rule",
+        "body": "Every label is sentence case at its natural tracking. Nothing is uppercased or letter-spaced to look like a label.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tone Step Rule",
+        "body": "To lift something, move it one tone step and give it a 1px line. Never add a shadow, blur or glow.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Square Block Rule",
+        "body": "The block is a 112px square (`--block`) and does not stretch. Play is the same square at the end of the strip, and while the room is open Stop room takes Play's square. A group with too many blocks wraps to another row of squares rather than shrink them.",
+        "section": "shapes"
+      },
+      {
+        "name": "The Dashed-Means-Off Rule",
+        "body": "Dashed borders mean off, absent or not yet. Never use a dash as decoration.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "**Do** keep cyan for what is chosen or running: Play, a selected or switched-on block, running dots, finished launch steps.",
+      "**Do** draw focus rings, the caret and links in the text colour (2px ring, 2px offset).",
+      "**Do** build every new control at 36px with 2px corners and a 1px control border.",
+      "**Do** make anything in a setup a 112px square block, and give Play (or Stop room) the same square.",
+      "**Do** lift with one tone step and a 1px line.",
+      "**Do** step state changes in two frames (`steps(2, jump-none)`, 90ms) and honour reduced motion.",
+      "**Do** say a state once, in the place that owns it.",
+      "**Do** give radio groups one Tab stop with arrow-key movement.",
+      "**Do** define all ten role tokens when adding a palette, and keep cyan and deep teal ink unchanged."
+    ],
+    "donts": [
+      "**Don't** use cyan for headings, links, hover, focus or decoration.",
+      "**Don't** add box-shadows, glows, blur or glass for depth.",
+      "**Don't** round corners past 2px, and don't make pills or circles.",
+      "**Don't** use smooth easing curves or drifting transitions.",
+      "**Don't** use dashed borders for anything that is not off, absent or pending.",
+      "**Don't** repeat a state label on every element it applies to.",
+      "**Don't** uppercase or letter-space labels, or add small labels above titles.",
+      "**Don't** introduce a second typeface; mono is only for paths and logs.",
+      "**Don't** use pure black or pure white; every palette's text and ground are tinted."
+    ]
+  }
+}
