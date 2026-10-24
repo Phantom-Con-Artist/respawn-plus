@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Respawn+</title>
+  </head>
+  <body>
+    <header class="app-bar"><a class="brand" href="#" aria-label="Respawn+ home">Respawn<span>+</span></a><span class="scope">Your games, on Linux</span><span id="environment-state">Connecting…</span></header>
+    <main class="shell">
+      <div class="title-row"><div><h1>Game library</h1><p id="library-summary">Loading your games…</p></div><div class="actions"><button id="scan">Find games</button><button id="scan-folder">Scan folder</button><button id="add-game">Add game</button></div></div>
+      <p id="message" class="message" role="status" aria-live="polite" hidden></p>
+      <div class="workspace">
+        <section class="library-pane" aria-label="Installed game library">
+          <div class="library-toolbar"><div class="tabs" aria-label="Filter library"><button id="filter-all" aria-pressed="true">All games</button><button id="filter-running" aria-pressed="false">Running</button></div><label class="search"><span class="sr-only">Search games</span><input id="search" type="search" placeholder="Search games" /></label></div>
+          <div id="game-list" class="game-list" aria-live="polite"><p class="empty">Loading library…</p></div>
+          <div class="library-footer"><button id="enter-path" class="text-button">Add an executable by path</button><span id="shown-count"></span></div>
+          <details class="runtime-panel"><summary>Available runtimes <span id="runtime-count">—</span></summary><ul id="runtimes"></ul><button id="refresh" class="text-button">Refresh runtimes</button></details>
+        </section>
+        <section class="details-pane" aria-labelledby="detail-title">
+          <button id="back-library" class="text-button">Back to library</button>
+          <div class="detail-header"><div><h2 id="detail-title">Your next session</h2><p id="game-state" class="game-state">Select a game to configure its environment.</p></div><button id="play" class="primary" disabled>Play</button></div>
+          <div id="detail-empty"><p>Find installed Windows games or add a game executable to get started.</p><p class="muted">Each game gets its own environment. Your library and settings stay on this machine.</p></div>
+          <div id="detail-content" hidden>
+            <div class="detail-tabs" aria-label="Game environment"><button id="detail-game" aria-pressed="true">Launch settings</button><button id="detail-tools" aria-pressed="false">Companion apps</button></div>
+            <div id="game-launch-panel">
+            <dl class="game-facts"><div><dt>Executable</dt><dd id="executable-path"></dd></div><div><dt>Wine prefix</dt><dd id="prefix-path"></dd></div><div><dt>Last played</dt><dd id="last-played"></dd></div></dl>
+            <form id="settings-form">
+              <h3>Launch settings</h3>
+              <label>Game name<input id="game-name" required maxlength="160" /></label>
+              <label>Runtime<select id="runtime-choice"></select></label>
+              <div id="custom-runtime" hidden><label>Runtime type<select id="custom-runtime-kind"><option value="proton">Proton (via UMU)</option><option value="wine">Wine</option></select></label><label>Runner executable<input id="custom-runtime-path" placeholder="/path/to/proton or /path/to/wine" /></label><button type="button" id="browse-runtime" class="text-button">Browse for a runner</button></div>
+              <label>Launch arguments <span class="muted">One argument per line</span><textarea id="argument-lines" rows="2" placeholder="Optional"></textarea></label>
+              <div class="form-actions"><button id="save-settings" type="submit" disabled>Save settings</button><button id="discard-settings" type="button" class="text-button" hidden>Discard changes</button><button id="view-log" type="button" class="text-button" disabled>View launch log</button></div>
+              <p id="settings-note" class="muted">Arguments are passed directly to the game.</p>
+            </form>
+            </div>
+            <section id="tools-panel" hidden aria-labelledby="tools-title">
+              <div class="tools-heading"><h3 id="tools-title">Companion apps</h3><button id="add-tool">Add app</button></div>
+              <p class="tool-help">Mod managers, script extenders, and trainers share this game’s runtime and Wine prefix.</p>
+              <div id="tool-list"></div>
+              <p class="tool-help">For MO2’s virtual mods, launch the game from inside MO2.</p>
+            </section>
+          </div>
+        </section>
+      </div>
+      <footer class="app-footer">Respawn+ · Local library <span>Windows games · Wine &amp; Proton</span></footer>
+    </main>
+    <dialog id="import-dialog"><form id="import-form"><div class="dialog-heading"><h2>Add a game</h2><button type="button" data-close="import-dialog" aria-label="Close add game dialog">Close</button></div><p id="import-error" role="alert" hidden></p><label>Windows executable<input id="import-path" required placeholder="/path/to/game.exe" /></label><label>Game name<input id="import-name" placeholder="Use executable name" /></label><button type="submit" class="primary">Add to library</button></form></dialog>
+    <dialog id="tool-dialog"><form id="tool-form"><div class="dialog-heading"><h2 id="tool-dialog-title">Add companion app</h2><button type="button" data-close="tool-dialog">Close</button></div><p id="tool-error" role="alert" hidden></p><label>Profile name<input id="tool-name" required maxlength="160" placeholder="Mod Organizer 2" /></label><label>App type<select id="tool-kind"><option value="mod_manager">Mod manager</option><option value="script_extender">SKSE / script extender</option><option value="trainer">Trainer</option><option value="utility">Utility</option></select></label><label>Windows executable<input id="tool-executable" required placeholder="/path/to/companion.exe" /></label><button id="browse-tool" class="text-button" type="button">Browse for executable</button><label>Working folder<input id="tool-working-directory" placeholder="Use the executable’s folder" /></label><button id="browse-tool-folder" class="text-button" type="button">Browse for working folder</button><label>Arguments <span class="muted">One argument per line</span><textarea id="tool-arguments" rows="3" placeholder="Optional"></textarea></label><p class="muted">Uses the selected game’s saved runtime and prefix.</p><button id="save-tool" class="primary" type="submit">Save profile</button></form></dialog>
+    <dialog id="remove-tool-dialog"><form id="remove-tool-form"><div class="dialog-heading"><h2>Remove manager profile?</h2><button data-close="remove-tool-dialog" type="button">Cancel</button></div><p id="remove-tool-description"></p><p class="muted">Only the Respawn+ profile and its launch history are removed. Manager files, mods, and the game prefix stay on disk.</p><p id="remove-tool-error" role="alert" hidden></p><button type="submit">Remove profile</button></form></dialog>
+    <dialog id="log-dialog"><div class="dialog-heading"><h2 id="log-title">Launch log</h2><div class="actions"><button id="refresh-log">Refresh</button><button data-close="log-dialog">Close</button></div></div><pre id="log-content"></pre></dialog>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
+

@@ -1,0 +1,14 @@
+{
+  "id": "mines",
+  "name": "Mines — Simon Tatham's Portable Puzzles",
+  "version": "20260923.616da16",
+  "license": "MIT",
+  "homepage": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/",
+  "download_url": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/mines.exe",
+  "source_url": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/puzzles.tar.gz",
+  "source_sha256": "cc419c8060b4e22be398aa03e30651fbce146eee510645c303fb6f5f1b77b78e",
+  "sha256": "3ba695d8bccac02cb9e6d63e630b50be15b729a952769814bbb684f9c9f096f3",
+  "size_bytes": 353864,
+  "executable": "mines.exe",
+  "tested_proton": "GE-Proton11-11-x86_64"
+}

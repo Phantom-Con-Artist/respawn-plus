@@ -1,0 +1,30 @@
+[package]
+name = "respawn-plus"
+version = "0.1.0"
+description = "Linux launcher and modding environment for Windows games"
+authors = ["Respawn+ contributors"]
+license = "MIT"
+edition = "2021"
+
+[lib]
+name = "respawn_plus_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[features]
+custom-protocol = ["tauri/custom-protocol"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2", features = [] }
+rusqlite = { version = "0.37", features = ["bundled"] }
+dirs = "6"
+which = "8"
+tauri-plugin-dialog = "2"
+
+[dev-dependencies]
+tempfile = "3"
+

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "resources": {
+      "../build/runtime-bundle/": "runtime-bundle/"
+    },
+    "linux": {
+      "deb": { "depends": ["python3"] },
+      "rpm": { "depends": ["python3"] }
+    }
+  }
+}
