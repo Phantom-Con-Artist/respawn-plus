@@ -1,4 +1,4 @@
 # Cloudflare Pages project. Deploy later with: npx wrangler pages deploy (from website/)
-name = "respawnplus"
+name = "vessel"
 pages_build_output_dir = "./dist"
 compatibility_date = "2026-10-01"

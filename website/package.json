@@ -2,7 +2,7 @@
   "name": "@vessel/website",
   "private": true,
   "version": "0.1.0",
-  "description": "Vessel website: landing page, documentation, about and downloads (Cloudflare Pages project: respawnplus)",
+  "description": "Vessel website: landing page, documentation, about and downloads (Cloudflare Pages project: vessel)",
   "license": "MIT",
   "type": "module",
   "scripts": {
