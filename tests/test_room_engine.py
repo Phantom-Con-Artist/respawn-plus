@@ -215,6 +215,16 @@ print(json.dumps({{'bytes':p.read_text(),'inode':p.stat().st_ino,'writable':writ
         time.sleep(1.1)
         self.assertEqual(subprocess.run(args).returncode,0)
 
+    def test_room_closes_itself_once_its_last_app_has_ended(self):
+        # An idle room must not keep its fullscreen display over the desktop.
+        root = self.start('idle')
+        time.sleep(6)
+        self.assertIsNone(self.processes[-1].poll(), 'a room with no app yet stays open for its first launch')
+        self.run_in(root, "import subprocess; subprocess.Popen(['/usr/bin/sleep','2'])")
+        time.sleep(4)
+        self.assertIsNone(self.processes[-1].poll(), 'a detached app keeps the room open after its launcher exits')
+        self.assertIsNotNone(self.processes[-1].wait(timeout=15))
+
     def test_online_network_uses_a_private_namespace(self):
         if not shutil.which('pasta'): self.skipTest('pasta not installed')
         root = self.start('online', network='online')

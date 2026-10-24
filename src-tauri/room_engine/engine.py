@@ -382,6 +382,38 @@ def execute(connection, request):
     finally: connection.close()
 
 
+def apps_running(children, supervisor):
+    # Everything except the room's own plumbing (init, supervisor, display, bus) is an app.
+    excluded = {1, supervisor} | {child.pid for child in children}
+    for path in Path('/proc').iterdir():
+        if not path.name.isdecimal() or int(path.name) in excluded: continue
+        try:
+            if (path / 'stat').read_text().rsplit(')', 1)[1].split()[0] != 'Z': return True
+        except FileNotFoundError: pass
+    return False
+
+
+def processes_named(name):
+    for path in Path('/proc').iterdir():
+        try:
+            if path.name.isdecimal() and (path / 'comm').read_text().strip() == name: return True
+        except (FileNotFoundError, PermissionError): pass
+    return False
+
+
+def close_when_idle(children, supervisor, grace=5):
+    # A room lives as long as its apps. Once one has run and none is left, close the room and its
+    # display rather than leave an empty fullscreen window over the desktop.
+    started = False; idle_since = None
+    while True:
+        time.sleep(1)
+        if apps_running(children, supervisor):
+            started = True; idle_since = None
+        elif started:
+            idle_since = idle_since or time.monotonic()
+            if time.monotonic() - idle_since >= grace: os._exit(0)
+
+
 def window_names():
     if not os.environ.get('DISPLAY'): return ''
     library = ctypes.util.find_library('X11')
@@ -446,6 +478,7 @@ def supervise(config):
         result = subprocess.run(command, stdin=subprocess.DEVNULL)
         if result.returncode: fail('Windows runtime registry integration failed')
     if config.get('once'): return 0
+    threading.Thread(target=close_when_idle, args=(children, os.getpid()), daemon=True).start()
     path = Path('/run/vessel/ipc/control.sock')
     path.unlink(missing_ok=True)
     with socket.socket(socket.AF_UNIX) as server:
@@ -472,15 +505,11 @@ def supervise(config):
                     for offset in range(0,len(payload),65536): send_frame(connection,b'O',payload[offset:offset+65536])
                     send_frame(connection,b'X',b'0'); connection.close(); continue
                 if request.get('status'):
-                    excluded = {1, os.getpid()} | {child.pid for child in children}
-                    active = False
-                    for path in Path('/proc').iterdir():
-                        if not path.name.isdecimal() or int(path.name) in excluded: continue
-                        try:
-                            state = (path / 'stat').read_text().rsplit(')', 1)[1].split()[0]
-                            if state != 'Z': active = True; break
-                        except FileNotFoundError: pass
-                    send_frame(connection, b'X', b'1' if active else b'0')
+                    send_frame(connection, b'X', b'1' if apps_running(children, os.getpid()) else b'0')
+                    connection.close(); continue
+                if request.get('ready'):
+                    # The Windows session is up once its wineserver runs; companions can join it.
+                    send_frame(connection, b'X', b'0' if processes_named('wineserver') else b'1')
                     connection.close(); continue
                 threading.Thread(target=execute, args=(connection, request), daemon=True).start()
             except Exception:

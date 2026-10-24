@@ -325,7 +325,7 @@ impl Launcher {
             .into_iter()
             .find(|g| g.id == settings.id)
             .ok_or("Game not found")?;
-        if is_running(&game.launch) || game.tools.iter().any(|t| is_running(&t.launch)) {
+        if self.room_in_use(&game) {
             return Err(
                 "Close the game and its mod managers before changing launch settings".into(),
             );
@@ -349,9 +349,13 @@ impl Launcher {
             return Err("Choose a resolution for this display mode".into());
         }
         if let Some(tool_id) = settings.launch_via_tool_id {
-            if !game.tools.iter().any(|t| t.id == tool_id) {
+            if !game
+                .tools
+                .iter()
+                .any(|t| t.id == tool_id && starts_game(&t.kind))
+            {
                 return Err(
-                    "Play can only launch through one of this game's companion apps".into(),
+                    "Play can start the game itself, or through one of its mod managers or script extenders".into(),
                 );
             }
         }
@@ -363,28 +367,49 @@ impl Launcher {
         Ok(())
     }
 
+    /// Anything still running for this game: its room (which closes when its last app does), or
+    /// a tracked launch.
+    fn room_in_use(&self, game: &Game) -> bool {
+        self.rooms.active(game.id)
+            || is_running(&game.launch)
+            || game.tools.iter().any(|t| is_running(&t.launch))
+    }
+
     /// Records the monitor the launcher is on; rooms size their display from it when a game has
     /// no resolution of its own.
     pub fn set_monitor(&self, size: Option<(u32, u32)>) -> Result<(), String> {
         self.rooms.set_monitor(size)
     }
 
-    /// Play: the game itself, or the companion app chosen to start it (such as a mod manager).
+    /// Play: the game itself, or the mod manager or script extender chosen to start it.
     pub fn launch(&self, id: i64) -> Result<Launch, String> {
-        let via = self
+        let game = self
             .games()?
             .into_iter()
             .find(|g| g.id == id)
-            .ok_or("Game not found")?
-            .launch_via_tool_id;
+            .ok_or("Game not found")?;
+        let via = game.launch_via_tool_id.filter(|tool_id| {
+            game.tools
+                .iter()
+                .any(|t| t.id == *tool_id && starts_game(&t.kind))
+        });
         match via {
             Some(tool_id) => self.launch_target(id, Some(tool_id), true),
             None => self.launch_target(id, None, false),
         }
     }
 
+    /// Opens a companion app. Trainers and utilities work on a running game, so when the game is
+    /// not running yet they start it first (with Play) and join its session once it is up.
     pub fn launch_tool(&self, tool_id: i64) -> Result<Launch, String> {
         let tool = self.find_tool(tool_id)?;
+        if self.uses_sandbox() && !starts_game(&tool.kind) {
+            if !self.rooms.active(tool.game_id) {
+                self.launch(tool.game_id)?;
+            }
+            self.rooms
+                .wait_ready(tool.game_id, std::time::Duration::from_secs(180))?;
+        }
         self.launch_target(tool.game_id, Some(tool_id), false)
     }
 
@@ -398,8 +423,9 @@ impl Launcher {
             .ok_or("Game not found")?;
         // The first process entering a supported room checkpoints it. Companions joining an
         // existing session share that checkpoint and must not snapshot a live Wine prefix.
-        let room_busy =
-            is_running(&game.launch) || game.tools.iter().any(|tool| is_running(&tool.launch));
+        // The room knows what is running: a launcher such as a script extender may exit while the
+        // game it started keeps going, so launch records alone would call the room idle.
+        let room_busy = self.room_in_use(&game);
         if !room_busy {
             self.rooms.quiesce(id)?;
             if self.uses_sandbox() {
@@ -632,6 +658,12 @@ impl Launcher {
             .map_err(|_| "No mod manager launch log yet")?;
         read_log(&path)
     }
+}
+
+/// Mod managers and script extenders start the game themselves; trainers and utilities attach to
+/// a game that is already running.
+pub(crate) fn starts_game(kind: &str) -> bool {
+    matches!(kind, "mod_manager" | "script_extender")
 }
 
 fn is_running(launch: &Option<Launch>) -> bool {
@@ -1199,6 +1231,66 @@ mod tests {
                 ("2026-10-24 10:00:00", Some(1800), None),
             ]
         );
+    }
+
+    #[test]
+    fn play_starts_the_game_or_a_launcher_kind_never_a_trainer() {
+        let temp = tempfile::tempdir().unwrap();
+        let launcher = Launcher::at(temp.path().join("state"), temp.path().join("logs")).unwrap();
+        let exe = temp.path().join("Game.exe");
+        let trainer_exe = temp.path().join("Trainer.exe");
+        fs::write(&exe, b"MZtest").unwrap();
+        fs::write(&trainer_exe, b"MZtest").unwrap();
+        let runner = temp.path().join("wine-test");
+        fs::write(&runner, "#!/bin/sh\nexit 0\n").unwrap();
+        fs::set_permissions(&runner, fs::Permissions::from_mode(0o755)).unwrap();
+        let game = launcher.import(&exe, None, "manual").unwrap();
+        let settings = |via| GameSettings {
+            id: game.id,
+            name: game.name.clone(),
+            runtime_kind: "wine".into(),
+            runtime_path: runner.display().to_string(),
+            arguments: vec![],
+            display_mode: "default".into(),
+            display_width: None,
+            display_height: None,
+            launch_via_tool_id: via,
+        };
+        launcher.save(settings(None)).unwrap();
+        let trainer = launcher
+            .save_tool(ToolSettings {
+                id: None,
+                game_id: game.id,
+                kind: "trainer".into(),
+                name: "Trainer".into(),
+                executable: trainer_exe.display().to_string(),
+                arguments: vec![],
+                working_directory: String::new(),
+            })
+            .unwrap();
+        assert!(launcher.save(settings(Some(trainer.id))).is_err());
+        // A trainer saved as the Play target by an older version: Play starts the game instead.
+        launcher
+            .connection()
+            .unwrap()
+            .execute(
+                "UPDATE games SET launch_via_tool_id=?1 WHERE id=?2",
+                [trainer.id, game.id],
+            )
+            .unwrap();
+        let launch = launcher.launch(game.id).unwrap();
+        wait_for_exit(&launcher, launch.id);
+        let db = launcher.connection().unwrap();
+        let tool: Option<i64> = db
+            .query_row(
+                "SELECT tool_id FROM launches WHERE id=?1",
+                [launch.id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(tool, None);
+        assert!(starts_game("mod_manager") && starts_game("script_extender"));
+        assert!(!starts_game("trainer") && !starts_game("utility"));
     }
 
     #[test]

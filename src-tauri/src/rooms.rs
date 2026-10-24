@@ -398,6 +398,38 @@ impl RoomManager {
         self.sessions.lock().map_err(err)?.remove(&game_id);
         Ok(())
     }
+    /// Waits until the room's Windows session is up, so a companion app joins the game's
+    /// container instead of starting one of its own.
+    pub(crate) fn wait_ready(&self, game_id: i64, timeout: Duration) -> Result<(), String> {
+        let deadline = Instant::now() + timeout;
+        loop {
+            {
+                let mut sessions = self.sessions.lock().map_err(err)?;
+                let session = sessions
+                    .get_mut(&game_id)
+                    .ok_or("The game closed before its companion app could join it")?;
+                if session.child.try_wait().map_err(err)?.is_some() {
+                    return Err("The game closed before its companion app could join it".into());
+                }
+                let ready = python(&session.engine, "exec")
+                    .arg(&session.socket)
+                    .arg("{\"ready\":true}")
+                    .stdout(Stdio::null())
+                    .stderr(Stdio::null())
+                    .status()
+                    .map_err(err)?
+                    .success();
+                if ready {
+                    return Ok(());
+                }
+            }
+            if Instant::now() > deadline {
+                return Err("The game did not start in time for this companion app".into());
+            }
+            std::thread::sleep(Duration::from_millis(500));
+        }
+    }
+
     pub(crate) fn quiesce(&self, game_id: i64) -> Result<(), String> {
         let mut sessions = self.sessions.lock().map_err(err)?;
         if let Some(session) = sessions.get_mut(&game_id) {

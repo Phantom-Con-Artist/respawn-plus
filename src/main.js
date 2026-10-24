@@ -85,6 +85,8 @@ function runnerName(game) {
 // ---------- Game state ----------
 function current() { return view.name === 'game' ? games.find((g) => g.id === view.id) : undefined; }
 function running(item) { return item.launch?.state === 'running'; }
+// Mod managers and script extenders start the game; trainers and utilities attach to it.
+function startsGame(kind) { return kind === 'mod_manager' || kind === 'script_extender'; }
 function gameSessionRunning(game) { return running(game) || (game.tools || []).some((tool) => (tool.kind === 'script_extender' || tool.id === game.launch_via_tool_id) && running(tool)); }
 function environmentBusy(game) { return running(game) || (game.tools || []).some(running); }
 function canPlay(game) { return !busy && !dirty && !gameSessionRunning(game) && game.available && !!game.runtime_path; }
@@ -313,8 +315,9 @@ function populateSettings(game) {
   $('#custom-runtime').hidden = select.value !== 'custom';
   $('#argument-lines').value = game.arguments.join('\n');
   const via = $('#play-via'); via.replaceChildren(new Option('The game itself', ''));
-  for (const tool of game.tools || []) via.append(new Option('Through ' + tool.name, String(tool.id)));
-  via.value = game.launch_via_tool_id ? String(game.launch_via_tool_id) : '';
+  // Only apps that start the game themselves can be the Play target; trainers run alongside it.
+  for (const tool of (game.tools || []).filter((tool) => startsGame(tool.kind))) via.append(new Option('Through ' + tool.name, String(tool.id)));
+  via.value = [...via.options].some((option) => option.value === String(game.launch_via_tool_id)) ? String(game.launch_via_tool_id) : '';
   for (const radio of document.querySelectorAll('[name="display-mode"]')) radio.checked = radio.value === game.display_mode;
   const [width, height] = screenSize();
   $('#display-width').value = game.display_width ?? width;
@@ -417,7 +420,7 @@ function renderTools(game) {
       ['Log', () => showLog({ type: 'tool', id: tool.id, name: tool.name }), !tool.launch, 'text-button'],
       ['Edit', () => editTool(tool), busy || running(tool), 'text-button'],
       ['Remove', () => removeToolDialog(tool), busy || running(tool), 'text-button'],
-      [running(tool) ? 'Running' : 'Open', () => openTool(tool.id), busy || dirty || running(tool) || !tool.available || !game.runtime_path, 'ghost small-button'],
+      [running(tool) ? 'Running' : startsGame(tool.kind) || gameSessionRunning(game) ? 'Open' : 'Play with game', () => openTool(tool.id), busy || dirty || running(tool) || !tool.available || !game.runtime_path, 'ghost small-button'],
     ]) {
       const button = element('button', label, kind);
       button.disabled = disabled; button.addEventListener('click', handler); actions.append(button);
