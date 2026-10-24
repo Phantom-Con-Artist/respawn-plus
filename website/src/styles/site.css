@@ -22,12 +22,46 @@
   --accent-ink: #0b0d0e;
   --field-1: #0c0d0f;
   --field-1-ink: #f4f5f6;
+  --ink-hover: #24282b;
+  --rule: #d5dbd9;
 
   --margin: clamp(16px, 2.8vw, 40px);
   --cut: 18px;                 /* one voxel step: the notch the "+" makes at a corner */
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-io: cubic-bezier(0.76, 0, 0.24, 1);
 }
+
+/* Dark: the same proportions on a near-black ground; teal stays the one accent. */
+:root[data-theme="dark"] {
+  --bg: #0d0f11;
+  --surface: #171a1d;
+  --ink: #eef1f0;
+  --muted: #a5adb0;
+  --accent-deep: #4fcabb;
+  --accent-pale: #17302d;
+  --field-1: #15181b;
+  --field-1-ink: #eef1f0;
+  --ink-hover: #cdd4d2;
+  --rule: #2a2f33;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+  --bg: #0d0f11;
+    --surface: #171a1d;
+    --ink: #eef1f0;
+    --muted: #a5adb0;
+    --accent-deep: #4fcabb;
+    --accent-pale: #17302d;
+    --field-1: #15181b;
+    --field-1-ink: #eef1f0;
+    --ink-hover: #cdd4d2;
+    --rule: #2a2f33;
+    color-scheme: dark;
+  }
+}
+/* Teal grounds keep dark ink in both themes. */
+.field:nth-child(2), .field:nth-child(3), .side.after, .plus-band, .package:nth-child(1), .stage, .band { color: var(--accent-ink); --muted: #2d3437; }
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
@@ -47,7 +81,7 @@ img, svg { display: block; max-width: 100%; }
 
 /* ---------- Buttons: one shape, square with the motif's notch ---------- */
 .button { display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 22px 0 26px; border: 0; background: var(--ink); color: var(--bg); font: 500 var(--step-body)/1 var(--font); text-decoration: none; cursor: pointer; clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px, 10px 10px); transition: background-color 200ms, transform 200ms var(--ease); }
-.button:hover { background: #24282b; }
+.button:hover { background: var(--ink-hover); }
 .button:active { transform: translateY(1px); }
 .button.alt { background: var(--accent); color: var(--accent-ink); }
 .button.alt:hover { background: #8aeadf; }
@@ -61,7 +95,7 @@ img, svg { display: block; max-width: 100%; }
 .lockup { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 600; font-size: 19px; letter-spacing: -0.02em; }
 .lockup img { width: 32px; height: 32px; will-change: transform; }
 .lockup .plus { color: var(--accent-deep); }
-.nav-links { display: flex; gap: 28px; font-size: 15px; }
+.nav-links { display: flex; align-items: center; gap: 28px; font-size: 15px; }
 .nav-links a { text-decoration: none; }
 .nav-links a:hover, .nav-links a[aria-current="page"] { text-decoration: underline; text-underline-offset: 6px; text-decoration-thickness: 2px; }
 
@@ -216,7 +250,7 @@ img, svg { display: block; max-width: 100%; }
 .cta form { font-size: clamp(32px, 5.6vw, 88px); line-height: 1.08; font-weight: 600; letter-spacing: -0.03em; }
 .cta label { display: inline; }
 .cta .blank { all: unset; display: inline-flex; align-items: center; height: 1.08em; padding: 0 0.22em; margin: 0 0.06em; background: var(--bg); color: var(--ink); vertical-align: -0.1em; cursor: pointer; clip-path: polygon(0.18em 0, 100% 0, 100% 100%, 0 100%, 0 0.18em, 0.18em 0.18em); transition: background-color 200ms; }
-.cta .blank:hover { background: #ffffff; }
+.cta .blank:hover { background: var(--accent); color: var(--accent-ink); }
 .cta .blank:focus-visible { outline: 3px solid var(--accent-deep); outline-offset: 3px; }
 .cta .word { display: inline-flex; align-items: center; height: 1.08em; padding: 0 0.22em; background: var(--accent); color: var(--accent-ink); text-decoration: none; vertical-align: -0.1em; clip-path: polygon(0.18em 0, 100% 0, 100% 100%, 0 100%, 0 0.18em, 0.18em 0.18em); transition: background-color 200ms; }
 .cta .word:hover { background: #8aeadf; }
@@ -259,7 +293,7 @@ img, svg { display: block; max-width: 100%; }
 .prose pre code { background: none; padding: 0; font-size: inherit; }
 .prose a { text-decoration: underline; text-underline-offset: 3px; }
 .prose table { width: 100%; border-collapse: collapse; margin: 0 0 20px; font-size: 15px; }
-.prose th, .prose td { text-align: left; padding: 10px 12px 10px 0; vertical-align: top; border-bottom: 1px solid #d5dbd9; }
+.prose th, .prose td { text-align: left; padding: 10px 12px 10px 0; vertical-align: top; border-bottom: 1px solid var(--rule); }
 .prose th { font-weight: 600; }
 .docs aside { font-size: 15px; color: var(--muted); }
 .docs aside a { display: block; margin-top: 8px; color: var(--ink); }
@@ -347,3 +381,12 @@ img, svg { display: block; max-width: 100%; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
   .reveal > * { opacity: 1; transform: none; }
 }
+
+/* Theme toggle */
+.theme-toggle { all: unset; display: inline-grid; place-items: center; width: 40px; height: 40px; cursor: pointer; border-radius: 50%; color: var(--ink); transition: background-color 200ms; }
+.theme-toggle:hover { background: var(--surface); }
+.theme-toggle:focus-visible { outline: 3px solid var(--accent-deep); outline-offset: 2px; }
+.theme-toggle svg { width: 20px; height: 20px; }
+.theme-toggle .moon { display: none; }
+:root[data-theme="dark"] .theme-toggle .sun { display: none; }
+:root[data-theme="dark"] .theme-toggle .moon { display: block; }
