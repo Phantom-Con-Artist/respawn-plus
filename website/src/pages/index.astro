@@ -1,0 +1,210 @@
+---
+// SPDX-License-Identifier: MIT
+import Base from '../layouts/Base.astro';
+import Voxel from '../components/Voxel.astro';
+
+const repo = 'https://github.com/Phantom-Con-Artist/respawn-plus';
+// Facts below come from real runs on the developer's machine (see docs/companion-apps.md).
+const tested = [
+  { name: 'Skyrim Special Edition', fact: 'Version 1.7.104 reached the menu and a new game under GE-Proton 11, in fullscreen set from Respawn+.', kind: 'Game', detail: 'SkyrimSE.exe', state: 'Running' },
+  { name: 'SKSE64', fact: 'Script extender 2.3.1 started the game and loaded SkyUI; its in-game menu appeared.', kind: 'Script extender', detail: 'skse64_loader.exe', state: 'Running' },
+  { name: 'Mod Organizer 2', fact: 'Version 2.5.2 opened under Proton, its virtual files worked, and its Run button started Skyrim.', kind: 'Mod manager', detail: 'ModOrganizer.exe', state: 'Ready' },
+  { name: 'A trainer', fact: 'A standalone trainer joined the game’s room and found SkyrimSE.exe as process 400; all ten of its options ran without a crash. Trainer apps like WeMod are added the same way.', kind: 'Trainer', detail: 'Any trainer .exe', state: 'Running' },
+];
+---
+<Base title="Respawn+ — Windows games, at home on Linux" description="Respawn+ runs, plays and configures Windows games and their mods on Linux, the way you would on Windows. Any mod manager, script extender or trainer runs alongside the game. Coming soon as v0.1.0 Beta." current="home">
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="hero-copy reveal">
+      <h1 id="hero-title">Windows games, at home on Linux.</h1>
+      <p class="hero-lead">Run, play and configure your Windows games and their mods the way you would on Windows. Each game gets its own Proton room, and any mod manager or trainer can join it. Coming soon as v0.1.0 Beta.</p>
+      <div class="hero-actions"><a class="button" href={repo}>Watch on GitHub <span class="arrow" aria-hidden="true">→</span></a><span class="status">Free and open source · MIT</span></div>
+    </div>
+    <div class="stage shutter">
+      <div class="stage-inner">
+        <div class="ui-window" data-ui aria-label="The Respawn+ launcher showing a game running with its script extender, trainer and mod manager">
+          <div class="ui-row"><div><div class="ui-title">Skyrim Special Edition</div><div class="ui-muted">Windows game · Proton · GE-Proton11-11</div></div><span class="ui-pill">Running</span></div>
+          <div class="ui-card" style="margin-top:16px">
+            <div class="ui-row" style="margin-bottom:6px"><strong>In this room</strong><span class="ui-muted ui-small">One shared container</span></div>
+            <ul class="ui-list">
+              <li><div><div>Skyrim via SKSE64</div><div class="ui-muted ui-small">Script extender · skse64_loader.exe</div></div><span class="ui-state live">Running</span></li>
+              <li><div><div>Trainer</div><div class="ui-muted ui-small">Sees SkyrimSE.exe as process 400</div></div><span class="ui-state live">Running</span></li>
+              <li><div><div>Mod manager</div><div class="ui-muted ui-small">Mod Organizer 2, Vortex or another</div></div><span class="ui-ghost">Open</span></li>
+            </ul>
+          </div>
+          <div class="ui-row" style="margin-top:14px"><span class="ui-muted">Display</span><span class="ui-num">Fullscreen · 1920×1080</span></div>
+        </div>
+        <div class="voxel-stage">
+          <Voxel id="hero-voxel" colours={{ top: '#f4fffd', front: '#0c0d0f', side: '#2a9d90' }} />
+          <button class="button respawn-button" id="respawn" type="button">Respawn</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <section class="why" aria-labelledby="why-title">
+    <div class="why-head reveal">
+      <h2 id="why-title">Why it exists</h2>
+      <p>Proton made Windows games run on Linux. The hard part is everything you do around them on Windows: mod managers like Mod Organizer 2 or Vortex, script extenders and trainers all need the game’s exact environment, and every launcher treats them as strangers.</p>
+    </div>
+    <div class="versus reveal">
+      <div class="side before">
+        <h3>Today, on Linux</h3>
+        <ul>
+          <li>Every game needs its own Wine prefix, made and kept by hand.</li>
+          <li>A trainer started from its own launcher can’t see the game’s process.</li>
+          <li>Mod managers run in a different environment and lose track of the game.</li>
+          <li>Crash logs get overwritten the moment the next app starts.</li>
+        </ul>
+      </div>
+      <div class="side after">
+        <h3>With Respawn+</h3>
+        <ul>
+          <li>Each game gets its own prefix and runner automatically.</li>
+          <li>Trainers join the game’s container and find it: process 400, found.</li>
+          <li>Any mod manager or script extender shares the game’s runner and prefix.</li>
+          <li>Every app writes its own launch log, so a crash leaves evidence.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+
+  <div class="plus-band" role="img" aria-label="A field of plus signs that turn as you scroll">
+    {Array.from({ length: 14 }, (_, i) => <span class="spin-plus" data-spin={i % 2 ? '-0.35' : '0.35'} data-phase={i * 13}></span>)}
+  </div>
+
+  <section aria-labelledby="how-title">
+    <div class="fields">
+      <article class="field reveal">
+        <h2 id="how-title">How a game respawns</h2>
+        <div class="card-slot" data-drift><div class="ui-card" data-ui><div class="ui-art">SkyrimSE.exe</div><div style="margin-top:12px"><strong>Skyrim Special Edition</strong><div class="ui-muted ui-small">Found in ~/Downloads</div></div><div style="margin-top:10px"><span class="ui-state">Choose a runtime</span></div></div></div>
+        <div class="text"><p class="clause">First it’s found.</p><p class="note">Find games scans your folders for Windows games. Nothing is copied or changed.</p></div>
+      </article>
+      <article class="field reveal">
+        <span></span>
+        <div class="card-slot" data-drift><div class="ui-card" data-ui><div class="ui-art">SkyrimSE.exe</div><div style="margin-top:12px"><strong>Skyrim Special Edition</strong><div class="ui-muted ui-small">GE-Proton11-11 · prefix game-2</div></div><div style="margin-top:10px"><span class="ui-state">Ready to play</span></div></div></div>
+        <div class="text"><p class="clause">Then it gets a room.</p><p class="note">Its own Wine prefix and runner, kept apart from every other game.</p></div>
+      </article>
+      <article class="field reveal">
+        <span></span>
+        <div class="card-slot" data-drift><div class="ui-card" data-ui><strong>Companion apps</strong><ul class="ui-list" style="margin-top:6px"><li><span>Your mod manager</span><span class="ui-muted ui-small">MO2, Vortex…</span></li><li><span>Script extender</span><span class="ui-muted ui-small">SKSE…</span></li><li><span>Trainer</span><span class="ui-muted ui-small">WeMod…</span></li></ul></div></div>
+        <div class="text"><p class="clause">Then its mods move in.</p><p class="note">Add any mod manager, script extender or trainer. Each one shares the game’s runner and prefix.</p></div>
+      </article>
+      <article class="field reveal">
+        <span></span>
+        <div class="card-slot" data-drift><div class="ui-card" data-ui><div class="ui-row"><strong>Skyrim Special Edition</strong><span class="ui-state live">Running</span></div><ul class="ui-list" style="margin-top:6px"><li><span>SKSE64</span><span class="ui-state live">Running</span></li><li><span>Trainer</span><span class="ui-state live">Running</span></li></ul><div class="ui-mono" style="margin-top:8px">SkyrimSE.exe · process 400</div></div></div>
+        <div class="text"><p class="clause">Then they play together.</p><p class="note">One shared container, so every companion app finds the game, just as on Windows.</p></div>
+      </article>
+    </div>
+  </section>
+
+  <section class="statement" aria-labelledby="does-title">
+    <h2 id="does-title" class="sr-only">What it does</h2>
+    <div class="reveal">
+      <p class="big">Pick <span class="slot" aria-hidden="true"><span class="seg" data-ui><span>Window</span><span class="on">Fullscreen</span></span></span> or borderless for each game before it starts. Every session is timed <span class="slot" aria-hidden="true"><span class="bars"><i style="height:30%"></i><i style="height:55%"></i><i style="height:20%"></i><i class="today" style="height:90%"></i></span></span> and your mod manager works inside the game’s own environment, as it does on Windows.</p>
+    </div>
+    <div class="statement-foot reveal"><div><p>Display modes work for Skyrim Special Edition and Fallout 4 today; playtime and sessions cover every game.</p><a class="button" href="/docs/">Read the docs <span class="arrow" aria-hidden="true">→</span></a></div></div>
+  </section>
+
+
+  <section class="caps" aria-labelledby="caps-title">
+    <h2 id="caps-title" class="reveal">Everything in the Beta</h2>
+    <ul class="cap-list reveal">
+      <li><strong>Finds your games</strong><span>Scans folders for Windows games or imports any .exe. Nothing is copied or changed.</span></li>
+      <li><strong>One room per game</strong><span>An isolated Wine prefix with Proton through UMU, plain Wine, or a runner you pick.</span></li>
+      <li><strong>Any mod manager or trainer</strong><span>Mod Organizer 2, Vortex, WeMod or a standalone trainer: add it and it runs alongside the game.</span></li>
+      <li><strong>Display modes</strong><span>Fullscreen, borderless or windowed at your resolution, set before launch for Skyrim SE and Fallout 4.</span></li>
+      <li><strong>Playtime and sessions</strong><span>Every session timed, daily totals for two weeks, and when you last played.</span></li>
+      <li><strong>Launch logs</strong><span>A separate log for every game and app launch, readable from the launcher.</span></li>
+      <li><strong>Finds your runtimes</strong><span>UMU, system Wine, Steam and Flatpak Proton, Lutris Wine and your own folders.</span></li>
+      <li><strong>Local and open</strong><span>Your library stays in a local SQLite file. Rust, Tauri and MIT licensed.</span></li>
+      <li class="next"><strong>Next: guided mod setup</strong><span>One-click setup for mod managers like MO2 and Vortex, and a per-game switch to play through them.</span></li>
+    </ul>
+  </section>
+
+  <section class="screens" aria-labelledby="screens-title">
+    <div class="screens-head reveal"><h2 id="screens-title">Real screens from the Beta</h2><p>Playtime is counted per day from every session, including the ones a script extender starts. Light and dark themes follow your desktop.</p></div>
+    <figure class="shot wide reveal"><img class="notch" src="/shots/game-sessions-dark.jpg" width="1087" height="395" alt="A game's session list in the Respawn+ launcher, dark theme: six sessions with their dates and lengths" loading="lazy" /><figcaption>Every session of one game, with the companion app that started it.</figcaption></figure>
+    <figure class="shot left reveal"><img class="notch" src="/shots/playtime-light.jpg" width="536" height="315" alt="The playtime chart for the last 14 days, light theme, with today's bar in teal" loading="lazy" /><figcaption>The last 14 days, today in teal.</figcaption></figure>
+    <figure class="shot right reveal"><img class="notch" src="/shots/sessions-dark.jpg" width="536" height="433" alt="The recent sessions list on the launcher's home screen, dark theme" loading="lazy" /><figcaption>Recent sessions on the home screen; a dash marks a session whose length was not recorded.</figcaption></figure>
+  </section>
+
+  <section class="showcase" aria-labelledby="tested-title">
+    <div class="plus-wrap">
+      <div class="plus-shape plus-mask" id="plus-shape" data-tone="0" aria-hidden="true"></div>
+      <div class="object" id="object">
+        {tested.map((item, i) => (
+          <div class:list={['ui-card', { on: i === 0 }]} data-ui data-item={i} style="padding:22px">
+            <div class="ui-row"><div class="ui-title">{item.name}</div><span class:list={['ui-state', { live: item.state === 'Running' }]}>{item.state}</span></div>
+            <div class="ui-muted" style="margin-top:4px">{item.kind} · {item.detail}</div>
+            <ul class="ui-list" style="margin-top:12px">
+              <li><span class="ui-muted">Runner</span><span>GE-Proton11-11</span></li>
+              <li><span class="ui-muted">Prefix</span><span class="ui-mono">prefixes/game-2</span></li>
+              <li><span class="ui-muted">Room</span><span>Shared with the game</span></li>
+            </ul>
+          </div>
+        ))}
+      </div>
+    </div>
+    <div class="choices reveal" role="group" aria-labelledby="tested-title">
+      <h2 id="tested-title">Tested so far</h2>
+      {tested.map((item, i) => <button type="button" data-choice={i} aria-pressed={i === 0 ? 'true' : 'false'}>{item.name}</button>)}
+    </div>
+    <p class="fact" id="fact" aria-live="polite">{tested[0].fact}</p>
+  </section>
+
+  <section class="cta" aria-labelledby="cta-title">
+    <h2 id="cta-title" class="sr-only">Get notified</h2>
+    <p class="cta-line" style="font-size:clamp(32px, 5.6vw, 88px);line-height:1.08;font-weight:600;letter-spacing:-0.03em">
+      I play on <button class="blank" id="distro" type="button" aria-label="Your Linux distribution: Fedora. Press to change.">Fedora</button>,<br />tell me when it <a class="word" href={`${repo}/releases`}>respawns</a>.
+    </p>
+    <p class="after" id="distro-note">Opens the project’s releases on GitHub; choose Watch, then Releases, to hear when v0.1.0 lands. Fedora is where Respawn+ is tested first, as an RPM package.</p>
+  </section>
+
+  <script>
+    // The live thing: the "+" rebuilds itself cube by cube, on load and on demand, and leans toward the cursor.
+    const voxel = document.getElementById('hero-voxel');
+    const respawn = () => { if (!voxel) return; voxel.classList.remove('respawning'); void voxel.getBoundingClientRect(); voxel.classList.add('respawning'); };
+    respawn();
+    document.getElementById('respawn')?.addEventListener('click', respawn);
+    voxel?.addEventListener('click', respawn);
+    if (matchMedia('(pointer: fine)').matches && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      addEventListener('pointermove', (event) => {
+        const x = event.clientX / innerWidth - 0.5, y = event.clientY / innerHeight - 0.5;
+        voxel?.style.setProperty('--ty', (x * 18).toFixed(1) + 'deg');
+        voxel?.style.setProperty('--tx', (-y * 12).toFixed(1) + 'deg');
+      });
+    }
+    // Tested together: choosing a name swaps the launcher card, the plus's tone and the fact.
+    const facts = [...document.querySelectorAll('.choices button')];
+    const cards = [...document.querySelectorAll('#object [data-item]')];
+    const tested = JSON.parse(document.getElementById('tested-data')?.textContent || '[]');
+    for (const button of facts) button.addEventListener('click', () => {
+      const i = Number(button.dataset.choice);
+      facts.forEach((b) => b.setAttribute('aria-pressed', String(b === button)));
+      cards.forEach((c) => c.classList.toggle('on', Number(c.dataset.item) === i));
+      document.getElementById('plus-shape')?.setAttribute('data-tone', String(i));
+      const fact = document.getElementById('fact');
+      if (fact && tested[i]) fact.textContent = tested[i].fact;
+    });
+    // The blank in the closing sentence: which package each distribution will get.
+    const notes = {
+      Fedora: 'Fedora is where Respawn+ is tested first, as an RPM package.',
+      Ubuntu: 'Ubuntu gets a DEB package with v0.1.0.',
+      Debian: 'Debian gets a DEB package with v0.1.0.',
+      Arch: 'On Arch, build from source for now; the steps are in the docs.',
+      openSUSE: 'openSUSE gets the RPM package with v0.1.0.',
+    };
+    const distro = document.getElementById('distro');
+    const names = Object.keys(notes);
+    distro?.addEventListener('click', () => {
+      const next = names[(names.indexOf(distro.textContent ?? 'Fedora') + 1) % names.length];
+      distro.textContent = next;
+      distro.setAttribute('aria-label', 'Your Linux distribution: ' + next + '. Press to change.');
+      const note = document.getElementById('distro-note');
+      if (note) note.textContent = 'Opens the project’s releases on GitHub; choose Watch, then Releases, to hear when v0.1.0 lands. ' + notes[next];
+    });
+  </script>
+  <script type="application/json" id="tested-data" set:html={JSON.stringify(tested)} />
+</Base>

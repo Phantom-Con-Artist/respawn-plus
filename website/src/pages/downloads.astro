@@ -1,0 +1,43 @@
+---
+// SPDX-License-Identifier: MIT
+import Base from '../layouts/Base.astro';
+const repo = 'https://github.com/Phantom-Con-Artist/respawn-plus';
+---
+<Base title="Downloads — Respawn+" description="Respawn+ v0.1.0 Beta packages for Fedora, Ubuntu and Debian are coming soon. Build from source today." current="downloads">
+  <header class="page-head">
+    <h1>Downloads</h1>
+    <p>v0.1.0 Beta is on its way. Packages appear here and on GitHub Releases the day it ships; until then, you can build it yourself.</p>
+  </header>
+  <div class="band" aria-hidden="true"></div>
+  <section class="downloads" aria-label="Packages">
+    <article class="package reveal">
+      <h2>Lite</h2>
+      <p class="when">Coming with v0.1.0 · RPM and DEB</p>
+      <p>Uses the Proton, Wine and UMU you already have. The smallest download, and the first one out.</p>
+      <ul><li>Fedora and openSUSE: RPM</li><li>Ubuntu and Debian: DEB</li><li>About 10 MB</li></ul>
+      <a class="button" href={`${repo}/releases`}>Watch releases <span class="arrow" aria-hidden="true">→</span></a>
+    </article>
+    <article class="package reveal">
+      <h2>Full</h2>
+      <p class="when">Planned after v0.1.0</p>
+      <p>Bundles a tested Wine and Proton runtime stack with its licences and sources, for machines that have none.</p>
+      <ul><li>Same RPM and DEB formats</li><li>Every bundled part listed in the notices</li></ul>
+      <a class="link" href="/docs/distribution/">How the editions differ</a>
+    </article>
+    <article class="package reveal">
+      <h2>Source</h2>
+      <p class="when">Available now · MIT</p>
+      <p>Build and run the current Beta from the repository. You need Rust, Node.js 22 and the Tauri system libraries.</p>
+      <ul><li>Tested on Fedora with GE-Proton 11</li><li>Runs on X11 and Wayland</li></ul>
+      <a class="link" href={repo}>Open the repository</a>
+    </article>
+    <div class="source reveal">
+      <div><h2>Build it now</h2><p>Clone, install and start the launcher in development mode. The Lite packages come from the same commands.</p></div>
+      <pre><code>git clone {repo}.git
+cd respawn-plus
+npm ci
+npm run tauri dev            # run the launcher
+npm run bundle:lite          # build the Lite RPM and DEB</code></pre>
+    </div>
+  </section>
+</Base>

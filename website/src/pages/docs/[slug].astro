@@ -1,0 +1,29 @@
+---
+// SPDX-License-Identifier: MIT
+import { getCollection, render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import { sortDocs } from '../../docs';
+
+export async function getStaticPaths() {
+  const docs = sortDocs(await getCollection('docs'));
+  return docs.map((doc) => ({ params: { slug: doc.id }, props: { doc, docs } }));
+}
+const { doc, docs } = Astro.props;
+const { Content, headings } = await render(doc);
+const title = headings.find((h) => h.depth === 1)?.text ?? doc.id;
+const titles = await Promise.all(docs.map(async (d) => (await render(d)).headings.find((h) => h.depth === 1)?.text ?? d.id));
+const sections = headings.filter((h) => h.depth === 2);
+---
+<Base title={`${title} — Respawn+ docs`} description={`Respawn+ documentation: ${title}.`} current="docs">
+  <div class="band" aria-hidden="true"></div>
+  <div class="docs">
+    <nav aria-label="Documentation">
+      {docs.map((d, i) => <a href={`/docs/${d.id}/`} aria-current={d.id === doc.id ? 'page' : undefined}>{titles[i]}</a>)}
+    </nav>
+    <article class="prose"><Content /></article>
+    <aside aria-label="On this page">
+      {sections.length > 0 && <p>On this page</p>}
+      {sections.map((h) => <a href={`#${h.slug}`}>{h.text}</a>)}
+    </aside>
+  </div>
+</Base>

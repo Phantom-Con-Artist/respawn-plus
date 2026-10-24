@@ -1,0 +1,18 @@
+{
+  "name": "@respawnplus/website",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Respawn+ website: landing page, documentation, about and downloads (Cloudflare Pages project: respawnplus)",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "deploy": "wrangler pages deploy"
+  },
+  "dependencies": {
+    "@astrojs/markdown-remark": "7.3.2",
+    "astro": "7.3.8"
+  }
+}

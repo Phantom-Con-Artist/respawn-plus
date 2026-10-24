@@ -1,5 +1,5 @@
 /target/
-/node_modules/
+node_modules/
 /dist/
 /build/
 /.taste-skill/
@@ -27,3 +27,10 @@
 .codex/
 .aws/
 
+
+# Website (Cloudflare Pages)
+/website/dist/
+/website/.astro/
+/website/.taste-skill/
+.wrangler/
+.playwright-mcp/

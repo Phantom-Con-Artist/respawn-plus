@@ -1,0 +1,81 @@
+---
+// SPDX-License-Identifier: MIT
+import '../styles/site.css';
+
+interface Props { title: string; description: string; current?: 'home' | 'docs' | 'downloads' | 'about' }
+const { title, description, current } = Astro.props;
+const repo = 'https://github.com/Phantom-Con-Artist/respawn-plus';
+const letters = ['r', 'e', 's', 'p', 'a', 'w', 'n', '+'];
+const heights = [78, 64, 86, 70, 92, 66, 82, 100];
+---
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta name="theme-color" content="#6fe3d4" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://api.fontshare.com" />
+    <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin />
+    <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <script is:inline>document.documentElement.classList.remove('no-js');</script>
+  </head>
+  <body id="top">
+    <header class="nav">
+      <a class="lockup" href="/" aria-label="Respawn+ home"><img src="/favicon.svg" alt="" width="32" height="32" data-spin="0.25" /><span>Respawn<span class="plus">+</span></span></a>
+      <nav class="nav-links" aria-label="Main">
+        <a href="/docs/" aria-current={current === 'docs' ? 'page' : undefined}>Docs</a>
+        <a href="/downloads/" aria-current={current === 'downloads' ? 'page' : undefined}>Downloads</a>
+        <a href="/about/" aria-current={current === 'about' ? 'page' : undefined}>About</a>
+        <a class="hide-sm" href={repo}>GitHub</a>
+      </nav>
+    </header>
+    <main><slot /></main>
+    <footer class="footer">
+      <div class="blocks reveal" role="img" aria-label="Respawn+, built from blocks">
+        {letters.map((l, i) => <span style={`--h:${heights[i]}%`}>{l}</span>)}
+      </div>
+      <div class="footer-links">
+        <div><h2>Product</h2><a href="/downloads/">Downloads</a><a href="/docs/">Documentation</a><a href="/about/">About</a></div>
+        <div><h2>Guides</h2><a href="/docs/library/">Your library</a><a href="/docs/companion-apps/">Mods and trainers</a><a href="/docs/test-game/">First test game</a></div>
+        <div><h2>Project</h2><a href={repo}>Source code</a><a href={`${repo}/blob/main/LICENSE`}>MIT licence</a><a href={`${repo}/blob/main/THIRD_PARTY_NOTICES.md`}>Third-party notices</a></div>
+        <div class="contact"><h2>Talk to us</h2><a href={`${repo}/issues`}>Report a bug or ask a question on GitHub Issues</a><a href={`${repo}/releases`}>Follow releases on GitHub</a></div>
+      </div>
+      <div class="footer-end"><span>© 2026 Respawn+ contributors · v0.1.0 Beta · MIT</span><a class="button alt" href="#top">Back to top</a></div>
+    </footer>
+    <script>
+      // Entrances: each section's parts rise in once as it enters. Without script, everything is shown.
+      const io = new IntersectionObserver((entries) => {
+        for (const entry of entries) if (entry.isIntersecting) { entry.target.classList.add('in'); io.unobserve(entry.target); }
+      }, { threshold: 0, rootMargin: '0px 0px -8% 0px' });
+      document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+
+      // Scroll-linked motion: [data-spin] turns with the page like a dial (degrees per pixel scrolled,
+      // offset by data-phase); [data-drift] cards ride at slightly different speeds. One rAF per frame.
+      if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        const spinners = [...document.querySelectorAll('[data-spin]')];
+        // Drift only where the fields stand side by side; stacked on a phone, a moving card would cover its caption.
+        const drifters = matchMedia('(min-width: 721px)').matches ? [...document.querySelectorAll('[data-drift]')] : [];
+        let queued = false;
+        const update = () => {
+          queued = false;
+          const y = scrollY, vh = innerHeight;
+          for (const el of spinners) el.style.transform = `rotate(${(y * Number(el.dataset.spin) + Number(el.dataset.phase || 0)).toFixed(1)}deg)`;
+          drifters.forEach((el, i) => {
+            const r = el.getBoundingClientRect();
+            if (r.bottom < -200 || r.top > vh + 200) return;
+            const p = (r.top + r.height / 2 - vh / 2) / vh;
+            el.style.translate = `0 ${(p * (12 + i * 10)).toFixed(1)}px`;
+          });
+        };
+        addEventListener('scroll', () => { if (!queued) { queued = true; requestAnimationFrame(update); } }, { passive: true });
+        update();
+      }
+    </script>
+  </body>
+</html>

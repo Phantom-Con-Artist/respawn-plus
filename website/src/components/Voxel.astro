@@ -1,0 +1,28 @@
+---
+// SPDX-License-Identifier: MIT
+// The Respawn+ "+": five cubes in the launcher logo's oblique projection (scripts/generate-brand.mjs),
+// one <g> per cube so each can drop in on its own when the mark "respawns".
+interface Props { id?: string; label?: string; colours?: { top: string; front: string; side: string } }
+const { id, label = 'The Respawn+ mark: five cubes forming a plus', colours = { top: '#c9fbf3', front: '#6fe3d4', side: '#2a9d90' } } = Astro.props;
+const S = 10, D = 0.42;
+const cells = [[1, 0], [0, 1], [1, 1], [2, 1], [1, 2]].sort((a, b) => a[1] - b[1] || a[0] - b[0]);
+const p = (x: number, y: number, z: number) => [(x + y * D) * S, (-z - y * D) * S];
+const face = (pts: number[][]) => 'M' + pts.map(([x, y]) => `${x.toFixed(2)} ${y.toFixed(2)}`).join('L') + 'Z';
+const cubes = cells.map(([x, z]) => {
+  const q = (dx: number, dy: number, dz: number) => p(x + dx, dy, z + dz);
+  return {
+    front: face([q(0, 0, 0), q(1, 0, 0), q(1, 0, 1), q(0, 0, 1)]),
+    top: face([q(0, 0, 1), q(1, 0, 1), q(1, 1, 1), q(0, 1, 1)]),
+    side: face([q(1, 0, 0), q(1, 1, 0), q(1, 1, 1), q(1, 0, 1)]),
+  };
+});
+---
+<svg class="voxel" id={id} viewBox="-1 -35.2 36.2 36.2" role="img" aria-label={label}>
+  {cubes.map((c, i) => (
+    <g class="cube" style={`--i:${i}`}>
+      <path d={c.front} fill={colours.front} stroke={colours.front} stroke-width="0.35" stroke-linejoin="round" />
+      <path d={c.top} fill={colours.top} stroke={colours.top} stroke-width="0.35" stroke-linejoin="round" />
+      <path d={c.side} fill={colours.side} stroke={colours.side} stroke-width="0.35" stroke-linejoin="round" />
+    </g>
+  ))}
+</svg>
