@@ -48,8 +48,6 @@ the area:
   Unreal `-Win64-Shipping` suffix rule.
 - `src/main.js`: Skyrim artwork from a fixed Steam URL, and a recovery note that names
   Skyrim Special Edition and Fallout 4.
-- `scripts/prepare-skyrim-test.mjs`: a manual test helper for one game. Keep it out of the
-  product.
 
 ## Working conventions
 

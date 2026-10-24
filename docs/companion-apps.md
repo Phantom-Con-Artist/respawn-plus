@@ -69,44 +69,6 @@ working folders, independent logs and exit codes, preservation across restarts,
 and preventing cross-game profile edits. A real Windows Notepad companion
 profile was used for the basic GUI smoke check and then removed.
 
-## Local Skyrim validation recipe
-
-The developer-only `scripts/prepare-skyrim-test.mjs` takes a game folder, prefix,
-and user-supplied SKSE/SkyUI archives. It checks for Skyrim 1.7.104, stages SKSE
-2.3.1 and SkyUI, backs up every overwritten file, records SHA-256 values and
-destinations, enables SkyUI in the prefix's plugin list, and sets a 1280×720
-window for debugging. It does not download or redistribute those mods.
-
-The backup manifest for the local validation is under
-`~/.local/share/vessel/backups/skyrim-test-1792827196689/manifest.json`.
-It records 68 deployed files/settings; original game executables were not changed.
-The original settings are available in that backup. Windowed mode is intentional,
-not an indication that Proton or SKSE failed.
-
-Validated so far: vanilla Skyrim reaches the menu; the SKSE log reports version
-2.3.1 initialized successfully for runtime 1.7.104; SkyUI's in-game MCM was
-confirmed in the user's screenshot.
-
-Shared-session validation on 2026-10-24: launched the SKSE profile first and
-then the supplied FLiNG trainer through Vessel. Skyrim reached its main menu
-and remained open alongside the trainer. The trainer displayed `SkyrimSE.exe`
-and Windows process ID **400**. Its launch log recorded
-`Re-entering container through bus 'com.steampowered.App…'`. Host processes
-79193 (Skyrim) and 79389 (trainer) shared mount namespace `mnt:[4026532838]`,
-the same Wine prefix, and the same Proton installation. These PID values are
-specific to that run. All trainer toggles were left disabled: process detection
-is verified, while cheat functionality for Skyrim 1.7.104 remains untested.
-
-Repeat the check by opening the SKSE profile, waiting for the game window, then
-opening the trainer. Check its process ID, inspect its Vessel launch log for
-the reentry message, and compare `/proc/<game-pid>/ns/mnt` with
-`/proc/<trainer-pid>/ns/mnt`. Opening two windows alone does not prove that they
-share a container or that the trainer detects the game.
-
-References: [SKSE compatibility](https://skse.silverlock.org/),
-[MO2](https://github.com/ModOrganizer2/modorganizer),
-[Linux MO2 integration](https://github.com/Furglitch/modorganizer2-linux-installer).
-
 ## Play through a companion app
 
 On the game's Launch tab, set **Play starts** to one of the game's companion apps. Play then opens that app, with its own arguments, in the game's room, and the time counts as play. Use it for any mod manager that can start the game itself, for example Mod Organizer 2 with the argument `moshortcut://:SKSE` (an executable named SKSE inside MO2) or Vortex. Opening the same app with its own Open button is not counted as play. Other companion apps keep running alongside it.

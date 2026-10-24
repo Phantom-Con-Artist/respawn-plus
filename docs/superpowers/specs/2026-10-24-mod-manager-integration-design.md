@@ -113,7 +113,7 @@ game**, **Open MO2**, and the **Launch through MO2** toggle.
 
 ### 5. SkyUI migration (local, one-off)
 
-A developer script beside `scripts/prepare-skyrim-test.mjs`, not product code:
+A one-off developer step, not product code:
 restore Data from
 `~/.local/share/vessel/backups/skyrim-test-1792827196689/manifest.json`
 (hash-checked before any deletion; stop on mismatch; SKSE loader and DLL stay),
