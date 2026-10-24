@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-use crate::{database, discovery, display, runtime};
+use crate::{database, discovery, display, recovery, rooms, runtime};
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -14,11 +14,25 @@ pub struct Launcher {
     pub data: PathBuf,
     db: PathBuf,
     logs: PathBuf,
-    launch_lock: Mutex<()>,
+    pub(crate) launch_lock: Mutex<()>,
+    _instance_lock: File,
+    pub(crate) rooms: rooms::RoomManager,
+    #[cfg(test)]
+    pub(crate) test_without_sandbox: bool,
+}
+
+impl Drop for Launcher {
+    fn drop(&mut self) {
+        // Explicitly unlock: a concurrently spawning child can briefly inherit the open
+        // description before exec closes it, even after our own File has been dropped.
+        let _ = self._instance_lock.unlock();
+    }
 }
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Game {
+    pub room: rooms::RoomStatus,
+    pub recovery: recovery::RecoveryStatus,
     pub id: i64,
     pub name: String,
     pub executable: String,
@@ -77,7 +91,7 @@ pub struct Tool {
     pub launch: Option<Launch>,
 }
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct ToolSettings {
     pub id: Option<i64>,
     pub game_id: i64,
@@ -102,7 +116,7 @@ pub struct Launch {
     pub error: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct GameSettings {
     pub id: i64,
     pub name: String,
@@ -133,6 +147,16 @@ pub struct ScanReport {
 }
 
 impl Launcher {
+    fn uses_sandbox(&self) -> bool {
+        #[cfg(test)]
+        {
+            !self.test_without_sandbox
+        }
+        #[cfg(not(test))]
+        {
+            true
+        }
+    }
     pub fn new() -> Result<Self, String> {
         let data = dirs::data_dir()
             .ok_or("Cannot locate app data")?
@@ -145,17 +169,34 @@ impl Launcher {
 
     pub fn at(data: PathBuf, logs: PathBuf) -> Result<Self, String> {
         fs::create_dir_all(&data).map_err(|e| e.to_string())?;
+        let instance_lock = File::options()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(data.join("launcher.lock"))
+            .map_err(|e| e.to_string())?;
+        instance_lock
+            .try_lock()
+            .map_err(|_| "This Respawn+ library is already open in another process")?;
         let db = data.join("respawn-plus.sqlite3");
         database::open(&db).map_err(|e| e.to_string())?;
-        Ok(Self {
+        let service = Self {
             data,
             db,
             logs,
             launch_lock: Mutex::new(()),
-        })
+            _instance_lock: instance_lock,
+            rooms: rooms::RoomManager::default(),
+            #[cfg(test)]
+            test_without_sandbox: true,
+        };
+        service.recover_rooms()?;
+        service.cleanup_room_storage()?;
+        Ok(service)
     }
 
-    fn connection(&self) -> Result<Connection, String> {
+    pub(crate) fn connection(&self) -> Result<Connection, String> {
         database::open(&self.db).map_err(|e| e.to_string())
     }
 
@@ -169,7 +210,11 @@ impl Launcher {
                 let args: String = row.get(6)?;
                 let launch_id: Option<i64> = row.get(9)?;
                 let (play_seconds, sessions, daily_play) = sessions_for_game(&db, row.get(0)?)?;
+                let mut room = rooms::status(&db, row.get(0)?)?;
+                room.active = self.rooms.active(row.get(0)?);
                 Ok(Game {
+                    room,
+                    recovery: recovery::status(&db, row.get(0)?, Path::new(&executable))?,
                     play_seconds,
                     sessions,
                     daily_play,
@@ -212,6 +257,8 @@ impl Launcher {
         name: Option<&str>,
         source: &str,
     ) -> Result<Game, String> {
+        let _guard = self.launch_lock.lock().map_err(|e| e.to_string())?;
+        self.recover_rooms()?;
         let executable = validate_executable(executable)?;
         let install = executable.parent().ok_or("Game has no parent directory")?;
         let default = runtime::discover()
@@ -272,6 +319,7 @@ impl Launcher {
 
     pub fn save(&self, settings: GameSettings) -> Result<(), String> {
         let _guard = self.launch_lock.lock().map_err(|e| e.to_string())?;
+        self.recover_rooms()?;
         let game = self
             .games()?
             .into_iter()
@@ -336,11 +384,23 @@ impl Launcher {
 
     fn launch_target(&self, id: i64, tool_id: Option<i64>, play: bool) -> Result<Launch, String> {
         let _guard = self.launch_lock.lock().map_err(|e| e.to_string())?;
+        self.recover_rooms()?;
         let mut game = self
             .games()?
             .into_iter()
             .find(|g| g.id == id)
             .ok_or("Game not found")?;
+        // The first process entering a supported room checkpoints it. Companions joining an
+        // existing session share that checkpoint and must not snapshot a live Wine prefix.
+        let room_busy =
+            is_running(&game.launch) || game.tools.iter().any(|tool| is_running(&tool.launch));
+        if !room_busy {
+            self.rooms.quiesce(id)?;
+            if self.uses_sandbox() {
+                self.prepare_room_runtimes(&mut game)?;
+            }
+        }
+        let checkpoint_game = game.clone();
         // Display settings belong to the game even when SKSE or a manager starts it.
         let game_executable = PathBuf::from(&game.executable);
         let script_active = game
@@ -383,7 +443,10 @@ impl Launcher {
             }
             command.current_dir(directory);
         }
-        fs::create_dir_all(&game.prefix).map_err(|e| e.to_string())?;
+        recovery::prepare_prefix(Path::new(&game.prefix))?;
+        if !room_busy && recovery::supported_game(&checkpoint_game) {
+            self.checkpoint_room(&checkpoint_game, "Before session")?;
+        }
         let db = self.connection()?;
         let mut log_dir = self.logs.join(format!("game-{id}"));
         if let Some(tool_id) = tool_id {
@@ -415,6 +478,9 @@ impl Launcher {
                 writeln!(log, "Display: {note}\n").map_err(|e| e.to_string())?;
             }
         }
+        if self.uses_sandbox() {
+            command = self.room_command(&checkpoint_game, command)?;
+        }
         // No PROTON_LOG: companions inherit the first app's environment in a shared container and
         // would reopen (truncate) its steam-<id>.log, destroying the game's crash output.
         command
@@ -422,8 +488,10 @@ impl Launcher {
             .stderr(Stdio::from(log))
             .stdin(Stdio::null());
         db.execute(
-            "INSERT INTO launches (game_id,tool_id,state,log_path,as_play) VALUES (?1,?2,'starting',?3,?4)",
-            params![id, tool_id, log_path.display().to_string(), play],
+            "INSERT INTO launches (game_id,tool_id,state,log_path,as_play,companion_kind,companion_name) VALUES (?1,?2,'starting',?3,?4,?5,?6)",
+            params![id, tool_id, log_path.display().to_string(), play,
+                checkpoint_game.tools.iter().find(|tool| Some(tool.id)==tool_id).map(|tool| &tool.kind),
+                checkpoint_game.tools.iter().find(|tool| Some(tool.id)==tool_id).map(|tool| &tool.name)],
         )
         .map_err(|e| e.to_string())?;
         let launch_id = db.last_insert_rowid();
@@ -498,6 +566,7 @@ impl Launcher {
 
     pub fn save_tool(&self, settings: ToolSettings) -> Result<Tool, String> {
         let _guard = self.launch_lock.lock().map_err(|e| e.to_string())?;
+        self.recover_rooms()?;
         if settings.name.trim().is_empty() {
             return Err("A companion app name is required".into());
         }
@@ -544,6 +613,7 @@ impl Launcher {
 
     pub fn remove_tool(&self, id: i64) -> Result<(), String> {
         let _guard = self.launch_lock.lock().map_err(|e| e.to_string())?;
+        self.recover_rooms()?;
         let tool = self.find_tool(id)?;
         if is_running(&tool.launch) {
             return Err("Close the mod manager before removing its profile".into());
@@ -575,7 +645,7 @@ fn is_running(launch: &Option<Launch>) -> bool {
 /// Play sessions are direct game launches and script-extender launches. Durations come from the
 /// supervisor's recorded end time; a running session counts up to now; `unknown` rows were closed
 /// by reconciliation long after the fact, so their duration is not trusted.
-const PLAY_SESSIONS: &str = "FROM launches l LEFT JOIN tools t ON t.id=l.tool_id WHERE l.game_id=?1 AND (l.tool_id IS NULL OR t.kind='script_extender' OR l.as_play=1)";
+const PLAY_SESSIONS: &str = "FROM launches l LEFT JOIN tools t ON t.id=l.tool_id WHERE l.game_id=?1 AND (l.tool_id IS NULL OR COALESCE(l.companion_kind,t.kind)='script_extender' OR l.as_play=1)";
 const SESSION_SECONDS: &str = "CASE WHEN l.state IN ('finished','failed') AND l.ended_at IS NOT NULL THEN CAST(ROUND((julianday(l.ended_at)-julianday(l.started_at))*86400) AS INTEGER) WHEN l.state IN ('starting','running') THEN CAST(ROUND((julianday('now')-julianday(l.started_at))*86400) AS INTEGER) END";
 const RECENT_SESSIONS: usize = 8;
 
@@ -589,7 +659,7 @@ fn sessions_for_game(
         |r| r.get(0),
     )?;
     let mut stmt = db.prepare(&format!(
-        "SELECT l.started_at,l.ended_at,l.state,{SESSION_SECONDS},t.name {PLAY_SESSIONS} ORDER BY l.started_at DESC, l.id DESC LIMIT {RECENT_SESSIONS}"
+        "SELECT l.started_at,l.ended_at,l.state,{SESSION_SECONDS},COALESCE(l.companion_name,t.name) {PLAY_SESSIONS} ORDER BY l.started_at DESC, l.id DESC LIMIT {RECENT_SESSIONS}"
     ))?;
     let sessions = stmt
         .query_map([game_id], |r| {
@@ -617,7 +687,7 @@ fn sessions_for_game(
 }
 
 fn tools_for_game(db: &Connection, game_id: i64) -> rusqlite::Result<Vec<Tool>> {
-    let mut statement = db.prepare("SELECT t.id,t.game_id,t.name,t.executable,t.arguments_json,t.working_directory,l.id,l.state,l.exit_code,l.log_path,l.error,t.kind FROM tools t LEFT JOIN launches l ON l.id=(SELECT MAX(id) FROM launches WHERE tool_id=t.id) WHERE t.game_id=?1 ORDER BY t.name COLLATE NOCASE")?;
+    let mut statement = db.prepare("SELECT t.id,t.game_id,t.name,t.executable,t.arguments_json,t.working_directory,l.id,l.state,l.exit_code,l.log_path,l.error,t.kind FROM tools t LEFT JOIN launches l ON l.id=(SELECT MAX(id) FROM launches WHERE tool_id=t.id) WHERE t.game_id=?1 AND t.recovery_archived=0 ORDER BY t.name COLLATE NOCASE")?;
     let rows = statement.query_map([game_id], |r| {
         let executable: String = r.get(3)?;
         let mut working_directory: String = r.get(5)?;

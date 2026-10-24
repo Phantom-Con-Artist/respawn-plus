@@ -34,3 +34,5 @@ node_modules/
 /website/.taste-skill/
 .wrangler/
 .playwright-mcp/
+.room-lab/
+__pycache__/

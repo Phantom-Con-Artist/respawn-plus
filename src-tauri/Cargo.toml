@@ -23,8 +23,10 @@ tauri = { version = "2", features = [] }
 rusqlite = { version = "0.37", features = ["bundled"] }
 dirs = "6"
 which = "8"
+libc = "0.2"
 tauri-plugin-dialog = "2"
 
 [dev-dependencies]
+base64 = "0.22"
 tempfile = "3"
 

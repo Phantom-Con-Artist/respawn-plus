@@ -156,6 +156,12 @@ label > span { font-weight: 400; }
 .card { padding: var(--pad); border-radius: var(--radius-card); background: var(--surface); min-width: 0; }
 .card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 16px; }
 .card-head.bare { margin-bottom: 8px; }
+.recovery-panel { display: grid; gap: 16px; }
+.recovery-panel .card-head, .recovery-panel p { margin: 0; }
+.dependency-list { padding-left: 20px; display: grid; gap: 12px; }
+.room-option { display: flex; align-items: center; gap: 10px; }
+.room-option input[type="checkbox"] { width: 16px; height: 16px; min-height: 16px; padding: 0; margin: 0; accent-color: var(--accent); }
+#room-packages { height: auto; min-height: 96px; padding: 8px 12px; }
 .empty { padding: 18px; border-radius: var(--radius-inner); background: var(--raised); color: var(--muted); list-style: none; }
 
 /* Art: covers keep square-ish small radii; screenshots sit contained. */

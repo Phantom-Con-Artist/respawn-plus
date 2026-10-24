@@ -40,7 +40,7 @@ $('#win-close').addEventListener('click', () => appWindow?.close());
 appWindow?.onResized(syncMaximized).catch(() => {});
 syncMaximized();
 
-let games = [], runtimes = [], filter = 'all', dirty = false;
+let games = [], runtimes = [], windowsRuntimes = [], filter = 'all', dirty = false;
 let view = { name: 'home', id: null };
 let selectedFormId = null, busy = false, refreshing = false, ready = false;
 let detailTab = 'overview', editingToolId = null, toolGameId = null, removingToolId = null, logTarget = null;
@@ -290,6 +290,13 @@ function renderRuntimes() {
     list.append(row);
   }
   if (!runtimes.length) list.append(element('li', 'No installed runtimes found. Add a custom runner in launch settings.'));
+  const dependencies = $('#windows-runtimes'); dependencies.replaceChildren();
+  for (const runtime of windowsRuntimes) {
+    const row = element('li');
+    row.textContent = runtime.manifest ? runtime.manifest.id + ' · ' + runtime.manifest.version + ' · ' + runtime.manifest.architecture : 'A runtime package needs repair: ' + runtime.error;
+    dependencies.append(row);
+  }
+  if (!windowsRuntimes.length) dependencies.append(element('li', 'No shared Windows packages installed. Your runner’s built-in libraries remain available.', 'muted'));
 }
 function screenSize() { return [Math.round(screen.width * devicePixelRatio), Math.round(screen.height * devicePixelRatio)]; }
 function populateSettings(game) {
@@ -324,6 +331,8 @@ function renderGame() {
   $('#play').textContent = gameSessionRunning(game) ? 'Running' : 'Play';
   $('#play').disabled = !canPlay(game);
   $('#view-log').disabled = !game.launch;
+  $('#stop-room').hidden = !game.room?.active;
+  $('#stop-room').disabled = busy;
   $('#game-playtime').textContent = duration(game.play_seconds);
   const last = (game.sessions || []).find((s) => s.seconds != null);
   $('#game-last-session').textContent = last ? duration(last.seconds) : '—';
@@ -356,6 +365,39 @@ function renderGame() {
   $('#display-note').textContent = game.display_supported ? 'Respawn+ sets the window mode in the game’s own settings just before it starts.' :
     'This game keeps its window mode in its own options menu. Respawn+ can set it for Skyrim Special Edition and Fallout 4.';
   renderTools(game);
+  renderRecovery(game);
+  renderRoomProfile(game);
+}
+function renderRoomProfile(game) {
+  const profile = game.room?.profile || {};
+  $('#room-network').value = profile.network || 'online';
+  $('#room-display').value = profile.display || 'auto';
+  $('#room-audio').checked = profile.audio !== false;
+  $('#room-controllers').checked = profile.controllers !== false;
+  const packages = $('#room-packages'); packages.replaceChildren();
+  for (const runtime of windowsRuntimes.filter((runtime) => runtime.manifest)) {
+    const option = new Option(runtime.manifest.id + ' ' + runtime.manifest.version + ' · ' + runtime.manifest.architecture, runtime.digest);
+    option.selected = (profile.packages || []).includes(runtime.digest); packages.append(option);
+  }
+  if (!packages.options.length) packages.append(new Option('No shared packages installed', ''));
+  for (const id of ['room-network','room-display','room-packages','room-audio','room-controllers']) $('#' + id).disabled = busy || dirty || environmentBusy(game);
+}
+function renderRecovery(game) {
+  const recovery = game.recovery || { supported: false, checkpoints: [] };
+  const select = $('#recovery-checkpoint');
+  const previous = select.value;
+  select.replaceChildren();
+  for (const checkpoint of recovery.checkpoints) select.append(new Option(clock(checkpoint.created_at) + ' · ' + checkpoint.label, String(checkpoint.id)));
+  if (!recovery.checkpoints.length) select.append(new Option('No checkpoints yet', ''));
+  if ([...select.options].some((option) => option.value === previous)) select.value = previous;
+  const locked = busy || dirty || environmentBusy(game);
+  $('#checkpoint-room').disabled = locked || !recovery.supported;
+  $('#restore-room').disabled = locked || !recovery.supported || !recovery.checkpoints.length;
+  select.disabled = locked || !recovery.checkpoints.length;
+  $('#recovery-note').textContent = !recovery.supported ? 'Recovery currently supports Skyrim Special Edition and Fallout 4. You can keep playing other games while support is added.' :
+    environmentBusy(game) ? 'Close the game and companion apps before restoring. This session uses the checkpoint made before the room opened.' :
+    dirty ? 'Save or discard your launch settings before using recovery.' :
+    'A restore point is saved before the room opens. Preparing large game folders may take a moment.';
 }
 function renderTools(game) {
   $('#add-tool').disabled = busy || dirty;
@@ -456,6 +498,7 @@ async function playGame(id) {
   setBusy(true);
   try {
     const game = games.find((g) => g.id === id);
+    message('Preparing ' + game.name + (game.recovery?.supported ? ' and its recovery checkpoint…' : '…'));
     await invoke('launch_game', { gameId: id });
     message('Starting ' + game.name + '.');
     await loadGames();
@@ -473,7 +516,8 @@ async function importPath(path, name = null) {
   } finally { setBusy(false); }
 }
 async function refreshEnvironment() {
-  const environment = await invoke('get_environment_status');
+  const [environment, dependencies] = await Promise.all([invoke('get_environment_status'), invoke('list_windows_runtimes')]);
+  windowsRuntimes = dependencies;
   runtimes = environment.runtimes;
   $('#environment-state').textContent = runtimes.length + (runtimes.length === 1 ? ' runtime' : ' runtimes') + ' ready';
   renderRuntimes(); render();
@@ -504,6 +548,7 @@ async function openTool(id) {
   setBusy(true);
   try {
     const tool = current()?.tools.find((t) => t.id === id);
+    message('Preparing ' + tool.name + (current()?.recovery?.supported && !environmentBusy(current()) ? ' and its recovery checkpoint…' : '…'));
     await invoke('launch_tool', { toolId: id });
     message('Starting ' + tool.name + '.');
     await loadGames();
@@ -567,6 +612,50 @@ $('#browse-runtime').addEventListener('click', async () => {
   catch (error) { message(String(error), true); }
 });
 $('#play').addEventListener('click', () => { if (current()) playGame(view.id); });
+$('#stop-room').addEventListener('click', async () => {
+  const game = current(); if (!game || busy) return;
+  setBusy(true); message('Stopping all apps in ' + game.name + '’s room…');
+  try { await invoke('stop_room', { gameId: game.id }); await loadGames(); message('Room apps stopped.'); }
+  catch (error) { message(String(error), true); }
+  finally { setBusy(false); }
+});
+for (const id of ['room-network','room-display','room-packages','room-audio','room-controllers']) $('#' + id).addEventListener('change', async () => {
+  const game = current(); if (!game || busy || dirty) return;
+  const profile = { ...game.room.profile, network: $('#room-network').value, display: $('#room-display').value,
+    packages: [...$('#room-packages').selectedOptions].map((option) => option.value).filter(Boolean), audio: $('#room-audio').checked, controllers: $('#room-controllers').checked };
+  setBusy(true);
+  try { await invoke('configure_room', { gameId: game.id, profile }); await loadGames(); message('Room preferences saved.'); }
+  catch (error) { message(String(error), true); }
+  finally { setBusy(false); }
+});
+$('#install-windows-runtime').addEventListener('click', async () => {
+  if (busy) return;
+  try {
+    const source = await open({ directory: true, multiple: false, title: 'Choose a prepared Windows runtime package' });
+    if (!source) return;
+    setBusy(true); message('Importing and verifying the shared runtime package…');
+    const installed = await invoke('install_windows_runtime', { source });
+    await refreshEnvironment(); message(installed.manifest.id + ' installed in the shared store.');
+  } catch (error) { message(String(error), true); }
+  finally { setBusy(false); }
+});
+async function recoverRoom(restore) {
+  const game = current();
+  if (!game || busy || dirty || environmentBusy(game)) return;
+  const checkpointId = Number($('#recovery-checkpoint').value);
+  setBusy(true);
+  message(restore ? 'Restoring ' + game.name + ' while keeping current saves…' : 'Creating a checkpoint for ' + game.name + '…');
+  try {
+    if (restore) await invoke('restore_room_checkpoint', { gameId: game.id, checkpointId });
+    else await invoke('create_room_checkpoint', { gameId: game.id });
+    selectedFormId = null;
+    await loadGames();
+    message(restore ? 'Setup restored. Current mapped saves were kept. Choose “Before restore — undo” to reverse this restore.' : 'Checkpoint created.');
+  } catch (error) { message(String(error), true); await loadGames().catch(() => {}); }
+  finally { setBusy(false); }
+}
+$('#checkpoint-room').addEventListener('click', () => recoverRoom(false));
+$('#restore-room').addEventListener('click', () => recoverRoom(true));
 $('#continue-play').addEventListener('click', (event) => { const id = Number(event.currentTarget.dataset.gameId); if (id) playGame(id); });
 $('#search').addEventListener('input', () => { if (view.name !== 'library') location.hash = '#/library'; else renderLibrary(); });
 for (const button of document.querySelectorAll('[data-filter]')) button.addEventListener('click', () => { filter = button.dataset.filter; renderLibrary(); });

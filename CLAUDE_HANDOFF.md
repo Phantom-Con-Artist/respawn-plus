@@ -1,5 +1,125 @@
 # Respawn+ — Claude takeover handshake
 
+## Latest update — 2026-10-24: rooms, shared Windows dependencies and rollback
+
+This section supersedes the historical implementation/Git status below. The user
+explicitly requested implementation, broad security/corruption testing, and a local
+Git commit with this handoff updated. They also asked to finish quickly because
+only 10% of their quota remained. Do not expand scope before reviewing this state.
+
+### Implemented
+
+- Production launches always use a per-game bubblewrap supervisor. Games and
+  companions execute in the same outer mount/PID/IPC/user/network namespaces.
+  Proton still uses UMU's shared inner container and a private session D-Bus.
+- Private home/tmp/proc, dropped capabilities, architecture-aware libseccomp,
+  no inherited host secrets/FDs, no host home/SSH agent/host session bus mounts,
+  no automatic unrestricted fallback. Online uses pasta in a private network
+  namespace; offline has no external networking. Host X11 is not exposed;
+  Wayland defaults to a private rootful Xwayland display.
+- Generic SHA-256 Windows package store with path/checksum/conflict validation,
+  read-only file mounts into prefixes, registry recipes, DLL overrides, capability
+  dependencies, PE/runtimeconfig-based detection, persisted pins, and repair only
+  from an unchanged original import source. No game-title whitelist in the room
+  or runtime package engine. No Microsoft runtime binaries are committed.
+- SQLite schema v6/v7: checkpoint/restore journals, archived tool profiles and
+  immutable historical launch labels, room profiles and runtime repair sources.
+- Automatic session checkpoints, manual restore/undo, private-home/prefix/game/
+  companion snapshots, current mapped saves preserved, resume interrupted
+  directory switches. Uses native Btrfs only when rootless cleanup is supported;
+  otherwise reflinks/copies, never writable hardlink trees.
+- Existing Skyrim/Fallout save adapters plus generic `save_paths`,
+  `game_save_paths`, `home_save_paths`. Wine Documents aliases are resolved and
+  redistributed between captured roots before staging. Entire-root save aliases
+  and unsafe changed external links are rejected.
+- UI: shared dependency import/catalog, per-room compatibility preferences,
+  Stop room apps, and save-preserving Room recovery controls.
+
+Main files: `src-tauri/src/rooms.rs`, `src-tauri/room_engine/engine.py`,
+`src-tauri/src/recovery.rs`, schema v6/v7, launch integration in `library.rs`.
+Read `docs/proton-rooms.md` and `docs/room-recovery.md` for contracts and limits.
+
+### Verified tests and real-game results
+
+- 32 Rust tests passed, including arbitrary-game mappings, current saves,
+  private-home/policy rollback, aliases between room roots, original-file
+  independence, seven simulated crash positions across three root switches,
+  archive/history retention, orphan Wine processes and exclusive-library locking.
+- 13 Python room-engine tests passed with `RESPAWN_TEST_WINE=1`: real namespaces,
+  shared read-only inode identity, hidden host files/environment/processes,
+  isolated online/offline abstract Unix sockets, private Xwayland, real Wine
+  console startup, spoofed host control sockets, malformed packages/PE data,
+  provider detection and poisoned-runtime repair with exact identity checks.
+- Frontend syntax/build and all three packaging checks passed. Strict Clippy passed. The browser harness passed after excluding test
+  directories from Vite file watching: command arguments, running/unsupported
+  locks and layouts at 1440/768/390 pixels.
+- Mines opened real game windows through Wine 11 and GE-Proton 11-11 / UMU 1.4.4.
+  Skyrim Special Edition opened through that Proton stack. Successful disposable
+  labs ran two stop/corrupt/restore cycles and retained newer synthetic test saves.
+  Skyrim's Documents-alias restore bug was found and fixed. Later successful
+  Skyrim cycles also poisoned registry and private-home settings.
+- This proves startup/recovery smoke behavior, not complete gameplay, every mod
+  manager/trainer feature, or real .NET/VC++ compatibility. Never claim otherwise.
+
+### Important remaining limitations
+
+1. Windows dependency payloads are zero-copy read-only mounts. The Steam **Linux**
+   Runtime adapter still builds a per-room compatibility cache and can copy files
+   across bind mounts. Several no-copy experiments broke loaders/alias setup;
+   those experiments were removed before final validation. Do not reintroduce
+   that broken path or describe the entire stack as zero-copy.
+2. Prepared package publication/composition exists, but there is no curated
+   vendor .NET/VC++ recipe catalog or automatic vendor installer downloader.
+   Actual Microsoft runtime sets and registry integration need dedicated testing.
+3. Shared kernel/device attack surface remains; no cgroup CPU/memory quotas,
+   anti-cheat guarantee, security audit, hotplug device broker, portal/file-picker
+   broker, or automatic legacy host-Documents import is implemented. Online
+   permits reachable LAN services. Audio can include recording (shown in UI).
+4. The game capture root is its executable directory, not always the complete
+   installation root. Registry-based progress and nonstandard saves need profiles.
+   Manual/undo checkpoints and quarantined runtime generations need retention UX.
+5. This Btrfs mount permits unprivileged subvolume creation but denies deletion.
+   New-prefix creation was corrected to use ordinary directories here. An empty
+   ignored `.room-lab/btrfs-probe` remains; removing it requires administrator
+   permission (`sudo btrfs subvolume delete .room-lab/btrfs-probe`). No user games
+   were modified to perform these tests.
+
+A final regression lab (`mines-final`) passed two Proton corruption/recovery
+cycles on the final compatibility path. Its `cycle-0.png` was visually inspected
+and shows the Mines board. Vite was following Wine drive symlinks in lab
+checkpoints and exhausting file watchers; `vite.config.js` now ignores
+`.room-lab`, `.taste-skill` and Rust build output.
+
+### Evidence and safe continuation
+
+`src-tauri/examples/room_lab.rs` creates an independent reflink/copy game tree and
+separate database, requires a visible game window, corrupts only lab data, restores
+and repeats. It refuses an existing destination. Do not point destructive tests at
+original games or the user's normal launcher database. All original game assets,
+mods, prefixes and saves were kept untouched.
+
+Ignored `.room-lab/evidence/` retains reports/logs from the experiments; obsolete
+large disposable game/prefix copies are cleaned up after evidence is retained.
+Final regression reports and visually inspected Mines screenshots are in
+`.room-lab/evidence/mines-final`; disposable game/prefix copies were removed. Browser
+mock fixtures/screenshots are under ignored `.taste-skill/recovery/`.
+
+Commands:
+
+```sh
+cargo test --manifest-path src-tauri/Cargo.toml --lib --offline
+cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --offline -- -D warnings
+RESPAWN_TEST_WINE=1 npm run test:rooms
+npm run check && npm run build && npm run test:packaging
+cargo run --manifest-path src-tauri/Cargo.toml --example room_lab -- NEW_LAB GAME_EXE proton PROTON_SCRIPT
+```
+
+No push, deployment, release package publication or external message was requested.
+The next high-value work is curated runtime recipes and actual .NET/VC++ validation,
+then control-plane crash/kill fuzzing, resource limits and portal integration.
+
+## Historical handoff (superseded where it conflicts with the update above)
+
 Prepared by Codex on 2026-10-24. Workspace:
 `/home/subhradeep/Development/linux-game-launcher-project`.
 

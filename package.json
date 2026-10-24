@@ -15,6 +15,7 @@
     "bundle:check": "node scripts/check-runtime-bundle.mjs",
     "bundle:lite": "tauri build --features custom-protocol",
     "bundle:full": "npm run bundle:check && tauri build --features custom-protocol --config packaging/tauri.full.conf.json",
+    "test:rooms": "python3 -m unittest discover -s tests -p test_room_engine.py -v",
     "test:packaging": "node --test tests/runtime-bundle.test.mjs",
     "test-game:setup": "node scripts/test-game.mjs install",
     "test-game:play": "node scripts/test-game.mjs play",

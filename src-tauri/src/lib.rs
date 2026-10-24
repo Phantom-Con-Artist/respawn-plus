@@ -3,6 +3,8 @@ mod database;
 mod discovery;
 mod display;
 pub mod library;
+mod recovery;
+pub mod rooms;
 mod runtime;
 
 use serde::Serialize;
@@ -90,6 +92,73 @@ async fn game_log(
 }
 
 #[tauri::command]
+async fn create_room_checkpoint(
+    service: tauri::State<'_, Arc<library::Launcher>>,
+    game_id: i64,
+) -> Result<i64, String> {
+    let service = service.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || service.create_checkpoint(game_id))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn configure_room(
+    service: tauri::State<'_, Arc<library::Launcher>>,
+    game_id: i64,
+    profile: rooms::RoomProfile,
+) -> Result<(), String> {
+    let service = service.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || service.configure_room(game_id, profile))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn stop_room(
+    service: tauri::State<'_, Arc<library::Launcher>>,
+    game_id: i64,
+) -> Result<(), String> {
+    let service = service.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || service.stop_room(game_id))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn install_windows_runtime(
+    service: tauri::State<'_, Arc<library::Launcher>>,
+    source: String,
+) -> Result<serde_json::Value, String> {
+    let service = service.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || service.install_windows_runtime(source))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn list_windows_runtimes(
+    service: tauri::State<'_, Arc<library::Launcher>>,
+) -> Result<serde_json::Value, String> {
+    let service = service.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || service.windows_runtimes())
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn restore_room_checkpoint(
+    service: tauri::State<'_, Arc<library::Launcher>>,
+    game_id: i64,
+    checkpoint_id: i64,
+) -> Result<(), String> {
+    let service = service.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || service.restore_checkpoint(game_id, checkpoint_id))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
 async fn save_tool(
     service: tauri::State<'_, Arc<library::Launcher>>,
     settings: library::ToolSettings,
@@ -165,6 +234,12 @@ pub fn run() {
             save_game,
             launch_game,
             game_log,
+            create_room_checkpoint,
+            restore_room_checkpoint,
+            configure_room,
+            stop_room,
+            install_windows_runtime,
+            list_windows_runtimes,
             save_tool,
             launch_tool,
             remove_tool,

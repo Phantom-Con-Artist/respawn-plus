@@ -92,6 +92,7 @@
           <div id="game-list" class="game-list" aria-live="polite"><p class="empty">Loading library…</p></div>
           <div class="library-footer"><button id="enter-path" class="text-button">Add an executable by path</button><span id="shown-count" class="num"></span></div>
           <details class="card runtime-panel"><summary>Available runtimes <span id="runtime-count" class="num">—</span></summary><ul id="runtimes"></ul><button id="refresh" class="text-button">Refresh runtimes</button></details>
+          <details class="card runtime-panel"><summary>Shared Windows dependencies</summary><p class="muted">Installed once and shared read-only with rooms that need them.</p><ul id="windows-runtimes" class="dependency-list"></ul><button id="install-windows-runtime" class="text-button">Import runtime package</button></details>
         </section>
 
         <!-- Game: one game's page, opened from any card. -->
@@ -103,7 +104,7 @@
               <p id="game-meta" class="muted"></p>
               <p id="game-state" class="state"></p>
             </div>
-            <div class="actions"><button id="view-log" class="ghost" type="button" disabled>Launch log</button><button id="play" class="primary" disabled>Play</button></div>
+            <div class="actions"><button id="stop-room" class="ghost" type="button" hidden>Stop room apps</button><button id="view-log" class="ghost" type="button" disabled>Launch log</button><button id="play" class="primary" disabled>Play</button></div>
           </header>
           <div class="tabs" role="tablist" aria-label="Game sections">
             <button id="detail-overview" aria-pressed="true">Overview</button>
@@ -120,6 +121,22 @@
             <section class="card span-2" aria-labelledby="env-title"><div class="card-head"><h2 id="env-title">Environment</h2></div>
               <dl class="facts"><div><dt>Executable</dt><dd id="executable-path" class="path"></dd></div><div><dt>Wine prefix</dt><dd id="prefix-path" class="path"></dd></div><div><dt>Runtime</dt><dd id="runtime-path" class="path"></dd></div></dl>
             </section>
+            <section class="card span-6 recovery-panel" aria-labelledby="recovery-title">
+              <div class="card-head"><h2 id="recovery-title">Room recovery</h2><button id="checkpoint-room" class="text-button">Create checkpoint</button></div>
+              <p id="recovery-note" class="muted" role="status"></p>
+              <label>Restore point<select id="recovery-checkpoint"></select></label>
+              <div class="actions"><button id="restore-room" class="ghost small-button">Restore setup · keep saves</button></div>
+              <p class="muted small">Keeps standard game saves and portable Mod Organizer 2 profile saves. A checkpoint of today’s setup lets you undo the restore.</p>
+            </section>
+            <details class="card span-6 recovery-panel"><summary>Room compatibility</summary>
+              <p class="muted">The game and companion apps share one protected room. Changes apply when the room opens again.</p>
+              <label>Connection<select id="room-network"><option value="online">Online</option><option value="offline">Offline</option></select></label>
+              <label>Display<select id="room-display"><option value="auto">Automatic private display</option><option value="nested-x11">Private Xwayland display</option><option value="wayland">Native Wayland</option><option value="headless">No display</option></select></label>
+              <label>Shared dependencies<select id="room-packages" multiple size="3" aria-describedby="room-package-note"></select></label>
+              <p id="room-package-note" class="muted small">Detected dependencies are selected automatically. A compatibility profile can pin specific versions.</p>
+              <label class="room-option"><input id="room-audio" type="checkbox" /> Audio access, including recording</label>
+              <label class="room-option"><input id="room-controllers" type="checkbox" /> Controller access</label>
+            </details>
           </div>
 
           <form id="settings-form" class="settings">

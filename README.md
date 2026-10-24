@@ -21,6 +21,7 @@ Respawn+ is a general, open-source launcher. Each game gets its own Proton or Wi
 - **Display modes.** Fullscreen, borderless or windowed at your resolution, written into the game's own settings before launch (Skyrim SE and Fallout 4 today; other games keep their in-game setting).
 - **Playtime and sessions.** Every session timed, daily totals for 14 days, last played. Launches through a script extender count as play.
 - **Launch logs.** A separate log per game and companion launch. Proton's shared log is not used, so a companion app can no longer overwrite the game's crash output.
+- **Room recovery.** Automatic setup checkpoints and restore with current mapped saves preserved, initially for Skyrim SE and Fallout 4. Btrfs snapshots where available, reflinks or copies elsewhere; see [support and limits](docs/room-recovery.md).
 - **Runtime discovery.** UMU, system Wine, native and Flatpak Steam Proton, Lutris Wine, and folders in `RESPAWN_RUNTIME_DIRS`.
 - **A desktop app.** Home dashboard, library with filters, a page per game, light and dark themes, built-in window controls. Your library is a local SQLite file.
 
@@ -35,7 +36,7 @@ Verified on Fedora with GE-Proton 11-11, UMU 1.4.4 and Skyrim Special Edition 1.
 
 Next: one-click setup helpers for common managers (see [the design](docs/superpowers/specs/2026-10-24-mod-manager-integration-design.md)).
 
-Compatibility varies by game and tool; Respawn+ says what was tested and does not promise universal Windows parity. It is not a sandbox: companion apps are ordinary Wine processes.
+Compatibility varies by game and tool; Respawn+ says what was tested and does not promise universal Windows parity. Games and companions now run inside a shared bubblewrap room, with a private home, process namespace and display. See [room security and runtime support](docs/proton-rooms.md) for the current boundary and limitations.
 
 ## Repository layout
 
