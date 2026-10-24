@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-use crate::{database, discovery, runtime};
+use crate::{database, discovery, display, runtime};
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -35,6 +35,11 @@ pub struct Game {
     pub play_seconds: i64,
     /// Most recent play sessions, newest first.
     pub sessions: Vec<Session>,
+    pub display_mode: String,
+    pub display_width: Option<u32>,
+    pub display_height: Option<u32>,
+    /// Whether Respawn+ can set this game's window mode (see `display`).
+    pub display_supported: bool,
 }
 
 /// A game launch, direct or through a script extender. Companion-only launches are not play.
@@ -94,6 +99,16 @@ pub struct GameSettings {
     pub runtime_kind: String,
     pub runtime_path: String,
     pub arguments: Vec<String>,
+    #[serde(default = "default_display_mode")]
+    pub display_mode: String,
+    #[serde(default)]
+    pub display_width: Option<u32>,
+    #[serde(default)]
+    pub display_height: Option<u32>,
+}
+
+fn default_display_mode() -> String {
+    "default".into()
 }
 
 #[derive(Serialize)]
@@ -135,7 +150,7 @@ impl Launcher {
     pub fn games(&self) -> Result<Vec<Game>, String> {
         let db = self.connection()?;
         reconcile(&db)?;
-        let mut query = db.prepare("SELECT g.id,g.name,g.executable,g.source,g.runtime_kind,g.runtime_path,g.arguments_json,g.last_played_at,p.path,l.id,l.state,l.exit_code,l.log_path,l.error FROM games g LEFT JOIN prefixes p ON p.id=(SELECT id FROM prefixes WHERE game_id=g.id ORDER BY id LIMIT 1) LEFT JOIN launches l ON l.id=(SELECT MAX(id) FROM launches WHERE game_id=g.id AND tool_id IS NULL) ORDER BY g.name COLLATE NOCASE").map_err(|e| e.to_string())?;
+        let mut query = db.prepare("SELECT g.id,g.name,g.executable,g.source,g.runtime_kind,g.runtime_path,g.arguments_json,g.last_played_at,p.path,l.id,l.state,l.exit_code,l.log_path,l.error,g.display_mode,g.display_width,g.display_height FROM games g LEFT JOIN prefixes p ON p.id=(SELECT id FROM prefixes WHERE game_id=g.id ORDER BY id LIMIT 1) LEFT JOIN launches l ON l.id=(SELECT MAX(id) FROM launches WHERE game_id=g.id AND tool_id IS NULL) ORDER BY g.name COLLATE NOCASE").map_err(|e| e.to_string())?;
         let rows = query
             .query_map([], |row| {
                 let executable: String = row.get::<_, Option<String>>(2)?.unwrap_or_default();
@@ -148,12 +163,16 @@ impl Launcher {
                     id: row.get(0)?,
                     name: row.get(1)?,
                     available: Path::new(&executable).is_file(),
+                    display_supported: display::supported(Path::new(&executable)),
                     executable,
                     source: row.get(3)?,
                     runtime_kind: row.get(4)?,
                     runtime_path: row.get(5)?,
                     arguments: serde_json::from_str(&args).unwrap_or_default(),
                     last_played_at: row.get(7)?,
+                    display_mode: row.get(14)?,
+                    display_width: row.get(15)?,
+                    display_height: row.get(16)?,
                     prefix: row.get::<_, Option<String>>(8)?.unwrap_or_default(),
                     tools: tools_for_game(&db, row.get(0)?)?,
                     launch: match launch_id {
@@ -259,8 +278,16 @@ impl Launcher {
             which::which(&settings.runtime_path)
                 .map_err(|e| format!("Runner must be an executable file: {e}"))?;
         }
+        if !display::MODES.contains(&settings.display_mode.as_str()) {
+            return Err("Choose a display mode".into());
+        }
+        if settings.display_mode != "default"
+            && (settings.display_width.is_none() || settings.display_height.is_none())
+        {
+            return Err("Choose a resolution for this display mode".into());
+        }
         let db = self.connection()?;
-        let updated = db.execute("UPDATE games SET name=?1,runtime_kind=?2,runtime_path=?3,arguments_json=?4 WHERE id=?5", params![settings.name.trim(),settings.runtime_kind,settings.runtime_path,serde_json::to_string(&settings.arguments).map_err(|e| e.to_string())?,settings.id]).map_err(|e| e.to_string())?;
+        let updated = db.execute("UPDATE games SET name=?1,runtime_kind=?2,runtime_path=?3,arguments_json=?4,display_mode=?5,display_width=?6,display_height=?7 WHERE id=?8", params![settings.name.trim(),settings.runtime_kind,settings.runtime_path,serde_json::to_string(&settings.arguments).map_err(|e| e.to_string())?,settings.display_mode,settings.display_width,settings.display_height,settings.id]).map_err(|e| e.to_string())?;
         if updated != 1 {
             return Err("Game not found".into());
         }
@@ -283,6 +310,8 @@ impl Launcher {
             .into_iter()
             .find(|g| g.id == id)
             .ok_or("Game not found")?;
+        // Display settings belong to the game even when SKSE or a manager starts it.
+        let game_executable = PathBuf::from(&game.executable);
         let script_active = game
             .tools
             .iter()
@@ -342,6 +371,19 @@ impl Launcher {
             game.name, game.executable, game.runtime_path, game.prefix
         )
         .map_err(|e| e.to_string())?;
+        if counts_as_play {
+            let applied = display::apply(
+                Path::new(&game.prefix),
+                &game.runtime_kind,
+                &game_executable,
+                &game.display_mode,
+                game.display_width.unwrap_or(0),
+                game.display_height.unwrap_or(0),
+            )?;
+            if let Some(note) = applied {
+                writeln!(log, "Display: {note}\n").map_err(|e| e.to_string())?;
+            }
+        }
         // No PROTON_LOG: companions inherit the first app's environment in a shared container and
         // would reopen (truncate) its steam-<id>.log, destroying the game's crash output.
         command
@@ -757,6 +799,9 @@ mod tests {
         let game = launcher.import(&exe, None, "manual").unwrap();
         launcher
             .save(GameSettings {
+                display_mode: "default".into(),
+                display_width: None,
+                display_height: None,
                 id: game.id,
                 name: game.name.clone(),
                 runtime_kind: "wine".into(),
@@ -780,6 +825,9 @@ mod tests {
         assert!(launcher.remove_tool(profile.id).is_err());
         assert!(launcher
             .save(GameSettings {
+                display_mode: "default".into(),
+                display_width: None,
+                display_height: None,
                 id: game.id,
                 name: game.name.clone(),
                 runtime_kind: "wine".into(),
@@ -875,6 +923,9 @@ mod tests {
         let game = launcher.import(&exe, None, "manual").unwrap();
         launcher
             .save(GameSettings {
+                display_mode: "default".into(),
+                display_width: None,
+                display_height: None,
                 id: game.id,
                 name: "My Mines".into(),
                 runtime_kind: "wine".into(),
@@ -906,6 +957,9 @@ mod tests {
         let game = launcher.import(&exe, None, "manual").unwrap();
         launcher
             .save(GameSettings {
+                display_mode: "default".into(),
+                display_width: None,
+                display_height: None,
                 id: game.id,
                 name: game.name.clone(),
                 runtime_kind: "wine".into(),
@@ -951,6 +1005,9 @@ mod tests {
         let game = launcher.import(&exe, None, "manual").unwrap();
         launcher
             .save(GameSettings {
+                display_mode: "default".into(),
+                display_width: None,
+                display_height: None,
                 id: game.id,
                 name: game.name.clone(),
                 runtime_kind: "wine".into(),
@@ -1026,5 +1083,57 @@ mod tests {
                 ("2026-10-24 10:00:00", Some(1800), None),
             ]
         );
+    }
+
+    #[test]
+    fn script_extender_launch_applies_the_game_display_mode_before_starting() {
+        let temp = tempfile::tempdir().unwrap();
+        let launcher = Launcher::at(temp.path().join("state"), temp.path().join("logs")).unwrap();
+        let folder = temp.path().join("Skyrim");
+        fs::create_dir_all(&folder).unwrap();
+        let exe = folder.join("SkyrimSE.exe");
+        let loader = folder.join("skse64_loader.exe");
+        fs::write(&exe, b"MZtest").unwrap();
+        fs::write(&loader, b"MZtest").unwrap();
+        let runner = temp.path().join("wine-test");
+        fs::write(&runner, "#!/bin/sh\nexit 0\n").unwrap();
+        fs::set_permissions(&runner, fs::Permissions::from_mode(0o755)).unwrap();
+        let game = launcher.import(&exe, None, "manual").unwrap();
+        launcher
+            .save(GameSettings {
+                id: game.id,
+                name: game.name.clone(),
+                runtime_kind: "wine".into(),
+                runtime_path: runner.display().to_string(),
+                arguments: vec![],
+                display_mode: "borderless".into(),
+                display_width: Some(2560),
+                display_height: Some(1440),
+            })
+            .unwrap();
+        let skse = launcher
+            .save_tool(ToolSettings {
+                id: None,
+                game_id: game.id,
+                kind: "script_extender".into(),
+                name: "SKSE".into(),
+                executable: loader.display().to_string(),
+                arguments: vec![],
+                working_directory: String::new(),
+            })
+            .unwrap();
+        let launch = launcher.launch_tool(skse.id).unwrap();
+        let user = std::env::var("USER").unwrap_or_else(|_| "user".into());
+        let prefs = Path::new(&game.prefix)
+            .join("drive_c/users")
+            .join(user)
+            .join("Documents/My Games/Skyrim Special Edition/SkyrimPrefs.ini");
+        assert_eq!(
+            fs::read_to_string(prefs).unwrap(),
+            "[Display]\nbFull Screen=0\nbBorderless=1\niSize W=2560\niSize H=1440\n"
+        );
+        assert!(read_log(&launch.log_path)
+            .unwrap()
+            .contains("Display: borderless 2560×1440"));
     }
 }

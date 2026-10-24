@@ -13,7 +13,7 @@ pub fn open(path: &Path) -> rusqlite::Result<Connection> {
 fn migrate(connection: &mut Connection) -> rusqlite::Result<()> {
     let transaction = connection.transaction()?;
     let version: u32 = transaction.query_row("PRAGMA user_version", [], |row| row.get(0))?;
-    if version > 3 {
+    if version > 4 {
         return Err(rusqlite::Error::InvalidParameterName(
             "Database is newer than this version of Respawn+".into(),
         ));
@@ -29,6 +29,10 @@ fn migrate(connection: &mut Connection) -> rusqlite::Result<()> {
     if version < 3 {
         transaction.execute_batch(include_str!("schema-v3.sql"))?;
         transaction.pragma_update(None, "user_version", 3)?;
+    }
+    if version < 4 {
+        transaction.execute_batch(include_str!("schema-v4.sql"))?;
+        transaction.pragma_update(None, "user_version", 4)?;
     }
     transaction.commit()
 }
@@ -115,7 +119,7 @@ mod tests {
         let mut db = Connection::open_in_memory().unwrap();
         migrate(&mut db).unwrap();
         migrate(&mut db).unwrap();
-        db.pragma_update(None, "user_version", 4).unwrap();
+        db.pragma_update(None, "user_version", 5).unwrap();
         assert!(migrate(&mut db).is_err());
     }
 }

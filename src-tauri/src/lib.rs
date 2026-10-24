@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 mod database;
 mod discovery;
+mod display;
 pub mod library;
 mod runtime;
 

@@ -76,7 +76,7 @@ launch directory and is not stable.
   from `moshortcut://<instance>:…`. Fallback if not: a portable MO2 copy per
   game (the configuration the spike proved).
 
-### 3. Data model — schema v4
+### 3. Data model — schema v5 (v4 added display modes)
 
 - MO2 is the game's existing `mod_manager` companion profile (opens MO2's UI).
 - `games.launch_via_tool_id INTEGER NULL REFERENCES tools(id) ON DELETE SET NULL`
@@ -100,7 +100,7 @@ then install SkyUI from the user's zip as an MO2 mod and enable its plugin.
 
 ### 6. Testing
 
-- Unit: ini generation; v3→v4 migration preserves data; Play command with the
+- Unit: ini generation; v4→v5 migration preserves data; Play command with the
   toggle on/off; checksum rejection.
 - Real: with a clean Data folder, Play → MO2 → SKSE → Skyrim; SKSE's log reads
   SkyUI's translations (only possible through MO2), then confirm the MCM in game.
