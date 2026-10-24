@@ -13,7 +13,7 @@ pub fn open(path: &Path) -> rusqlite::Result<Connection> {
 fn migrate(connection: &mut Connection) -> rusqlite::Result<()> {
     let transaction = connection.transaction()?;
     let version: u32 = transaction.query_row("PRAGMA user_version", [], |row| row.get(0))?;
-    if version > 7 {
+    if version > 8 {
         return Err(rusqlite::Error::InvalidParameterName(
             "Database is newer than this version of Vessel".into(),
         ));
@@ -45,6 +45,10 @@ fn migrate(connection: &mut Connection) -> rusqlite::Result<()> {
     if version < 7 {
         transaction.execute_batch(include_str!("schema-v7.sql"))?;
         transaction.pragma_update(None, "user_version", 7)?;
+    }
+    if version < 8 {
+        transaction.execute_batch(include_str!("schema-v8.sql"))?;
+        transaction.pragma_update(None, "user_version", 8)?;
     }
     transaction.commit()
 }
@@ -131,7 +135,7 @@ mod tests {
         let mut db = Connection::open_in_memory().unwrap();
         migrate(&mut db).unwrap();
         migrate(&mut db).unwrap();
-        db.pragma_update(None, "user_version", 8).unwrap();
+        db.pragma_update(None, "user_version", 9).unwrap();
         assert!(migrate(&mut db).is_err());
     }
 }

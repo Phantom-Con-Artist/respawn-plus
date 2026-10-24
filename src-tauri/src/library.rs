@@ -87,6 +87,8 @@ pub struct Tool {
     pub executable: String,
     pub arguments: Vec<String>,
     pub working_directory: String,
+    /// Opens with the game whenever Play starts it (trainers and utilities only).
+    pub with_game: bool,
     pub available: bool,
     pub launch: Option<Launch>,
 }
@@ -101,6 +103,8 @@ pub struct ToolSettings {
     pub executable: String,
     pub arguments: Vec<String>,
     pub working_directory: String,
+    #[serde(default)]
+    pub with_game: bool,
 }
 
 fn default_tool_kind() -> String {
@@ -399,6 +403,32 @@ impl Launcher {
         }
     }
 
+    /// After Play: opens every trainer and utility switched to open with the game, each joining
+    /// the game's session once it is up. Returns the names of apps that could not open.
+    pub fn launch_companions(&self, game_id: i64) -> Vec<String> {
+        let Some(game) = self
+            .games()
+            .ok()
+            .and_then(|games| games.into_iter().find(|g| g.id == game_id))
+        else {
+            return vec![];
+        };
+        game.tools
+            .iter()
+            .filter(|t| t.with_game && !starts_game(&t.kind) && !is_running(&t.launch))
+            .filter_map(|t| {
+                self.launch_tool(t.id)
+                    .err()
+                    .map(|e| format!("{}: {e}", t.name))
+            })
+            .collect()
+    }
+
+    /// Whether the game's room has its Windows session up, so its window is on the way.
+    pub fn room_ready(&self, game_id: i64) -> bool {
+        self.rooms.ready(game_id)
+    }
+
     /// Opens a companion app. Trainers and utilities work on a running game, so when the game is
     /// not running yet they start it first (with Play) and join its session once it is up.
     pub fn launch_tool(&self, tool_id: i64) -> Result<Launch, String> {
@@ -597,6 +627,9 @@ impl Launcher {
         {
             return Err("Choose a supported companion app type".into());
         }
+        // Mod managers and script extenders start the game themselves (Play through them);
+        // only apps that attach to a running game open alongside it.
+        let with_game = settings.with_game && !starts_game(&settings.kind);
         if !self.games()?.iter().any(|g| g.id == settings.game_id) {
             return Err("Game not found".into());
         }
@@ -624,10 +657,10 @@ impl Launcher {
             if is_running(&old.launch) {
                 return Err("Close the mod manager before editing its profile".into());
             }
-            db.execute("UPDATE tools SET name=?1,executable=?2,arguments_json=?3,working_directory=?4,kind=?5 WHERE id=?6", params![settings.name.trim(), executable.display().to_string(), arguments, directory.display().to_string(), settings.kind, id]).map_err(|e| e.to_string())?;
+            db.execute("UPDATE tools SET name=?1,executable=?2,arguments_json=?3,working_directory=?4,kind=?5,with_game=?6 WHERE id=?7", params![settings.name.trim(), executable.display().to_string(), arguments, directory.display().to_string(), settings.kind, with_game, id]).map_err(|e| e.to_string())?;
             id
         } else {
-            db.execute("INSERT INTO tools (game_id,name,executable,kind,arguments_json,working_directory) VALUES (?1,?2,?3,?4,?5,?6)", params![settings.game_id, settings.name.trim(), executable.display().to_string(), settings.kind, arguments, directory.display().to_string()]).map_err(|e| e.to_string())?;
+            db.execute("INSERT INTO tools (game_id,name,executable,kind,arguments_json,working_directory,with_game) VALUES (?1,?2,?3,?4,?5,?6,?7)", params![settings.game_id, settings.name.trim(), executable.display().to_string(), settings.kind, arguments, directory.display().to_string(), with_game]).map_err(|e| e.to_string())?;
             db.last_insert_rowid()
         };
         self.find_tool(id)
@@ -715,7 +748,7 @@ fn sessions_for_game(
 }
 
 fn tools_for_game(db: &Connection, game_id: i64) -> rusqlite::Result<Vec<Tool>> {
-    let mut statement = db.prepare("SELECT t.id,t.game_id,t.name,t.executable,t.arguments_json,t.working_directory,l.id,l.state,l.exit_code,l.log_path,l.error,t.kind FROM tools t LEFT JOIN launches l ON l.id=(SELECT MAX(id) FROM launches WHERE tool_id=t.id) WHERE t.game_id=?1 AND t.recovery_archived=0 ORDER BY t.name COLLATE NOCASE")?;
+    let mut statement = db.prepare("SELECT t.id,t.game_id,t.name,t.executable,t.arguments_json,t.working_directory,l.id,l.state,l.exit_code,l.log_path,l.error,t.kind,t.with_game FROM tools t LEFT JOIN launches l ON l.id=(SELECT MAX(id) FROM launches WHERE tool_id=t.id) WHERE t.game_id=?1 AND t.recovery_archived=0 ORDER BY t.name COLLATE NOCASE")?;
     let rows = statement.query_map([game_id], |r| {
         let executable: String = r.get(3)?;
         let mut working_directory: String = r.get(5)?;
@@ -740,6 +773,7 @@ fn tools_for_game(db: &Connection, game_id: i64) -> rusqlite::Result<Vec<Tool>> 
             id: r.get(0)?,
             game_id: r.get(1)?,
             kind: r.get(11)?,
+            with_game: r.get(12)?,
             name: r.get(2)?,
             available: Path::new(&executable).is_file(),
             executable,
@@ -962,6 +996,7 @@ mod tests {
                 executable: manager.display().to_string(),
                 arguments: vec!["literal space; $value".into()],
                 working_directory: working.display().to_string(),
+                with_game: false,
             })
             .unwrap();
         launcher.launch_tool(profile.id).unwrap();
@@ -1034,10 +1069,12 @@ mod tests {
                 executable: exe.display().to_string(),
                 arguments: vec!["-p".into(), "Modded profile".into()],
                 working_directory: String::new(),
+                with_game: false,
             })
             .unwrap();
         assert!(launcher
             .save_tool(ToolSettings {
+                with_game: false,
                 id: Some(profile.id),
                 game_id: second.id,
                 kind: default_tool_kind(),
@@ -1234,6 +1271,59 @@ mod tests {
     }
 
     #[test]
+    fn play_opens_only_the_companions_switched_on_to_run_with_the_game() {
+        let temp = tempfile::tempdir().unwrap();
+        let launcher = Launcher::at(temp.path().join("state"), temp.path().join("logs")).unwrap();
+        let runner = temp.path().join("wine-test");
+        fs::write(&runner, "#!/bin/sh\nsleep 0.3\nexit 0\n").unwrap();
+        fs::set_permissions(&runner, fs::Permissions::from_mode(0o755)).unwrap();
+        let exe = |name: &str| {
+            let path = temp.path().join(name);
+            fs::write(&path, b"MZtest").unwrap();
+            path.display().to_string()
+        };
+        let game = launcher
+            .import(Path::new(&exe("Game.exe")), None, "manual")
+            .unwrap();
+        launcher
+            .save(GameSettings {
+                id: game.id,
+                name: game.name.clone(),
+                runtime_kind: "wine".into(),
+                runtime_path: runner.display().to_string(),
+                arguments: vec![],
+                display_mode: "default".into(),
+                display_width: None,
+                display_height: None,
+                launch_via_tool_id: None,
+            })
+            .unwrap();
+        let tool = |kind: &str, name: &str, with_game| {
+            launcher
+                .save_tool(ToolSettings {
+                    id: None,
+                    game_id: game.id,
+                    kind: kind.into(),
+                    name: name.into(),
+                    executable: exe(&format!("{name}.exe")),
+                    arguments: vec![],
+                    working_directory: String::new(),
+                    with_game,
+                })
+                .unwrap()
+        };
+        let trainer = tool("trainer", "Trainer", true);
+        let idle = tool("utility", "Idle", false);
+        // A mod manager starts the game itself, so it never opens alongside it.
+        let manager = tool("mod_manager", "Manager", true);
+        assert!(trainer.with_game && !idle.with_game && !manager.with_game);
+        launcher.launch(game.id).unwrap();
+        assert!(launcher.launch_companions(game.id).is_empty());
+        let opened = |id| launcher.find_tool(id).unwrap().launch.is_some();
+        assert!(opened(trainer.id) && !opened(idle.id) && !opened(manager.id));
+    }
+
+    #[test]
     fn play_starts_the_game_or_a_launcher_kind_never_a_trainer() {
         let temp = tempfile::tempdir().unwrap();
         let launcher = Launcher::at(temp.path().join("state"), temp.path().join("logs")).unwrap();
@@ -1266,6 +1356,7 @@ mod tests {
                 executable: trainer_exe.display().to_string(),
                 arguments: vec![],
                 working_directory: String::new(),
+                with_game: false,
             })
             .unwrap();
         assert!(launcher.save(settings(Some(trainer.id))).is_err());
@@ -1329,6 +1420,7 @@ mod tests {
                 executable: loader.display().to_string(),
                 arguments: vec![],
                 working_directory: String::new(),
+                with_game: false,
             })
             .unwrap();
         let launch = launcher.launch_tool(loader_tool.id).unwrap();
@@ -1381,6 +1473,7 @@ mod tests {
                 executable: manager.display().to_string(),
                 arguments: vec!["moshortcut://:SKSE".into()],
                 working_directory: String::new(),
+                with_game: false,
             })
             .unwrap();
         let settings = |via| GameSettings {

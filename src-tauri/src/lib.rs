@@ -88,9 +88,25 @@ async fn launch_game(
 ) -> Result<library::Launch, String> {
     let service = service.inner().clone();
     service.set_monitor(monitor_size(&window))?;
-    tauri::async_runtime::spawn_blocking(move || service.launch(game_id))
+    let launcher = service.clone();
+    let launch = tauri::async_runtime::spawn_blocking(move || launcher.launch(game_id))
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())??;
+    // Trainers and utilities set to open with the game join its session once it is up; their
+    // own launch records report how that went.
+    tauri::async_runtime::spawn_blocking(move || service.launch_companions(game_id));
+    Ok(launch)
+}
+
+#[tauri::command]
+async fn room_ready(
+    service: tauri::State<'_, Arc<library::Launcher>>,
+    game_id: i64,
+) -> Result<bool, String> {
+    let service = service.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || service.room_ready(game_id))
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -249,6 +265,7 @@ pub fn run() {
             import_game,
             save_game,
             launch_game,
+            room_ready,
             game_log,
             create_room_checkpoint,
             restore_room_checkpoint,

@@ -802,6 +802,7 @@ impl Launcher {
                     executable: tool.executable.clone(),
                     arguments: tool.arguments.clone(),
                     working_directory: tool.working_directory.clone(),
+                    with_game: tool.with_game,
                 })
                 .collect(),
         };
@@ -1008,11 +1009,11 @@ impl Launcher {
         .map_err(error)?;
         let mut tool_ids = HashMap::new();
         for tool in &manifest.tools {
-            let updated = tx.execute("UPDATE tools SET name=?1,executable=?2,kind=?3,arguments_json=?4,working_directory=?5,recovery_archived=0 WHERE id=?6 AND game_id=?7", params![tool.name,tool.executable,tool.kind,serde_json::to_string(&tool.arguments).map_err(error)?,tool.working_directory,tool.id,game_id]).map_err(error)?;
+            let updated = tx.execute("UPDATE tools SET name=?1,executable=?2,kind=?3,arguments_json=?4,working_directory=?5,with_game=?6,recovery_archived=0 WHERE id=?7 AND game_id=?8", params![tool.name,tool.executable,tool.kind,serde_json::to_string(&tool.arguments).map_err(error)?,tool.working_directory,tool.with_game,tool.id,game_id]).map_err(error)?;
             let restored_id = if updated == 1 {
                 tool.id.ok_or("Missing tool ID")?
             } else {
-                tx.execute("INSERT INTO tools(game_id,name,executable,kind,arguments_json,working_directory) VALUES (?1,?2,?3,?4,?5,?6)", params![game_id, tool.name, tool.executable, tool.kind, serde_json::to_string(&tool.arguments).map_err(error)?, tool.working_directory]).map_err(error)?;
+                tx.execute("INSERT INTO tools(game_id,name,executable,kind,arguments_json,working_directory,with_game) VALUES (?1,?2,?3,?4,?5,?6,?7)", params![game_id, tool.name, tool.executable, tool.kind, serde_json::to_string(&tool.arguments).map_err(error)?, tool.working_directory, tool.with_game]).map_err(error)?;
                 tx.last_insert_rowid()
             };
             if let Some(old) = tool.id {
@@ -1237,6 +1238,7 @@ mod tests {
                 executable: manager.join("ModOrganizer.exe").to_string_lossy().into(),
                 arguments: vec!["-p".into(), "main".into()],
                 working_directory: manager.to_string_lossy().into(),
+                with_game: false,
             })
             .unwrap();
         service
@@ -1360,6 +1362,7 @@ mod tests {
         assert!(service.restore_checkpoint(other.id, id).is_err());
         service
             .save_tool(ToolSettings {
+                with_game: false,
                 id: None,
                 game_id: other.id,
                 kind: "utility".into(),
@@ -1432,6 +1435,7 @@ mod tests {
         let id = service.create_checkpoint(game.id).unwrap();
         let tool = service
             .save_tool(ToolSettings {
+                with_game: false,
                 id: None,
                 game_id: game.id,
                 kind: "script_extender".into(),

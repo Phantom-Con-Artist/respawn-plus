@@ -430,6 +430,26 @@ impl RoomManager {
         }
     }
 
+    /// One readiness check, for progress shown while a room starts.
+    pub(crate) fn ready(&self, game_id: i64) -> bool {
+        let Ok(mut sessions) = self.sessions.lock() else {
+            return false;
+        };
+        let Some(session) = sessions.get_mut(&game_id) else {
+            return false;
+        };
+        if session.child.try_wait().ok().flatten().is_some() {
+            return false;
+        }
+        python(&session.engine, "exec")
+            .arg(&session.socket)
+            .arg("{\"ready\":true}")
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .is_ok_and(|status| status.success())
+    }
+
     pub(crate) fn quiesce(&self, game_id: i64) -> Result<(), String> {
         let mut sessions = self.sessions.lock().map_err(err)?;
         if let Some(session) = sessions.get_mut(&game_id) {
