@@ -1,1 +1,18 @@
-{ "buildPath": "code" }
+{
+  "buildPath": "code",
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "index.html"
+        ],
+        "createdAt": "2026-10-24T18:09:07.385Z",
+        "reason": "Claude: static scan of index.html cannot see src/styles.css (imported from src/main.js by Vite); rendered sizes are h1 28px, h2 18px, body 14px, every step >=1.25x"
+      }
+    ]
+  }
+}
