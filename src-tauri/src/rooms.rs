@@ -186,6 +186,21 @@ fn valid_profile(profile: &RoomProfile) -> Result<(), String> {
     Ok(())
 }
 
+/// Size of the room's private X screen. Windowed games get a decorated window of their own size;
+/// every other mode fills the monitor, so a fullscreen game never renders into a smaller screen.
+fn xwayland_screen(game: &Game) -> Value {
+    match (
+        game.display_mode.as_str(),
+        game.display_width,
+        game.display_height,
+    ) {
+        ("windowed", Some(width), Some(height)) => {
+            json!({"fullscreen":false,"width":width,"height":height})
+        }
+        _ => json!({"fullscreen":true}),
+    }
+}
+
 fn writable_roots(game: &Game, data: &Path) -> Result<Vec<PathBuf>, String> {
     let prefix = Path::new(&game.prefix).canonicalize().map_err(err)?;
     let data = data.canonicalize().map_err(err)?;
@@ -549,9 +564,10 @@ impl RoomManager {
             }
             let guest_config = root.join(format!("supervisor-{stamp}.json"));
             let config_path = root.join(format!("session-{stamp}.json"));
-            let config = json!({"display":display,"once":false,"private_bus":game.runtime_kind=="proton","registry_commands":[]});
+            let screen = xwayland_screen(game);
+            let config = json!({"display":display,"screen":screen,"once":false,"private_bus":game.runtime_kind=="proton","registry_commands":[]});
             fs::write(&guest_config, serde_json::to_vec(&config).map_err(err)?).map_err(err)?;
-            let mut host_config = json!({"network":profile.network,"display":display,"graphics":profile.graphics,"audio":profile.audio,"controllers":profile.controllers,"wayland":wayland,"user":user,"home":home,"guest_home":guest_home,"accounts":accounts,"engine":engine,"guest_config":guest_config,"ipc":ipc,"writable_roots":roots,"read_only_roots":read_only,"runtime_mounts":runtime_mounts,"private_mounts":private_mounts,"prefix":game.prefix,"environment":environment});
+            let mut host_config = json!({"network":profile.network,"display":display,"screen":screen,"graphics":profile.graphics,"audio":profile.audio,"controllers":profile.controllers,"wayland":wayland,"user":user,"home":home,"guest_home":guest_home,"accounts":accounts,"engine":engine,"guest_config":guest_config,"ipc":ipc,"writable_roots":roots,"read_only_roots":read_only,"runtime_mounts":runtime_mounts,"private_mounts":private_mounts,"prefix":game.prefix,"environment":environment});
             let packages = resolved["packages"]
                 .as_array()
                 .ok_or("Invalid runtime package resolution")?;
@@ -662,7 +678,7 @@ impl RoomManager {
             fs::write(
                 guest_config,
                 serde_json::to_vec(
-                    &json!({"display":host_config["display"],"once":true,"private_bus":game.runtime_kind=="proton","bootstrap":bootstrap,"wait_command":[wineserver,"-w"],"wine_prefix":prefix}),
+                    &json!({"display":host_config["display"],"screen":host_config["screen"],"once":true,"private_bus":game.runtime_kind=="proton","bootstrap":bootstrap,"wait_command":[wineserver,"-w"],"wine_prefix":prefix}),
                 )
                 .map_err(err)?,
             )
@@ -702,7 +718,7 @@ impl RoomManager {
             ]);
             registry_commands.push(argv);
         }
-        fs::write(guest_config, serde_json::to_vec(&json!({"display":host_config["display"],"once":false,"private_bus":game.runtime_kind=="proton","registry_commands":registry_commands})).map_err(err)?).map_err(err)?;
+        fs::write(guest_config, serde_json::to_vec(&json!({"display":host_config["display"],"screen":host_config["screen"],"once":false,"private_bus":game.runtime_kind=="proton","registry_commands":registry_commands})).map_err(err)?).map_err(err)?;
         Ok(())
     }
 }

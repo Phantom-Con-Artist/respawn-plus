@@ -422,7 +422,10 @@ def supervise(config):
         os.environ['DBUS_SESSION_BUS_ADDRESS']='unix:path=/run/respawn/ipc/bus'
     if config['display'] == 'nested-x11':
         Path('/tmp/.X11-unix').mkdir(mode=0o700, exist_ok=True)
-        children.append(subprocess.Popen(['/usr/bin/Xwayland', ':0', '-nolisten', 'tcp', '-ac', '-geometry', '1280x800', '-decorate'], stdin=subprocess.DEVNULL))
+        # The X screen must be at least the game's resolution, or the area outside it is never redrawn.
+        screen = config.get('screen') or {}
+        size = ['-fullscreen'] if screen.get('fullscreen') else ['-geometry', f"{int(screen.get('width', 1280))}x{int(screen.get('height', 800))}", '-decorate']
+        children.append(subprocess.Popen(['/usr/bin/Xwayland', ':0', '-nolisten', 'tcp', '-ac', *size], stdin=subprocess.DEVNULL))
         deadline = time.monotonic() + 15
         while not Path('/tmp/.X11-unix/X0').exists():
             if children[-1].poll() is not None or time.monotonic() > deadline: fail('Private Xwayland display could not start')
@@ -457,7 +460,7 @@ def supervise(config):
                     windows = window_names()
                     details={'processes':processes,'windows':windows,'mount_namespace':os.readlink('/proc/self/ns/mnt'),'network_namespace':os.readlink('/proc/self/ns/net')}
                     if request.get('screenshot') and os.environ.get('DISPLAY') and shutil.which('ffmpeg'):
-                        captured=subprocess.run(['/usr/bin/ffmpeg','-loglevel','error','-f','x11grab','-video_size','1280x800','-draw_mouse','0','-i',os.environ['DISPLAY'],'-frames:v','1','-threads','1','-f','image2pipe','-vcodec','png','-'],capture_output=True,timeout=15)
+                        captured=subprocess.run(['/usr/bin/ffmpeg','-loglevel','error','-f','x11grab','-draw_mouse','0','-i',os.environ['DISPLAY'],'-frames:v','1','-threads','1','-f','image2pipe','-vcodec','png','-'],capture_output=True,timeout=15)
                         if captured.returncode==0 and len(captured.stdout)<=8*MAX_REQUEST: details['image_base64']=base64.b64encode(captured.stdout).decode()
                         else: details['capture_error']=captured.stderr.decode(errors='replace')[-1000:]
                     payload=canonical_json(details)

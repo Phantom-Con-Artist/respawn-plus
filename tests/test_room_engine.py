@@ -157,11 +157,11 @@ class Sandbox(unittest.TestCase):
             process.stderr.close()
         if hasattr(self, 'temp'): self.temp.cleanup()
 
-    def start(self, name, mounts=None, network='offline', display='headless'):
+    def start(self, name, mounts=None, network='offline', display='headless', screen=None):
         root = self.root / name; root.mkdir()
         for directory in ('home','ipc','prefix','game'): (root / directory).mkdir()
         accounts = root / 'passwd'; accounts.write_text(f'player:x:{os.getuid()}:{os.getgid()}:Room:/home/player:/bin/sh\n')
-        guest = root / 'guest.json'; guest.write_text(json.dumps({'display':display,'once':False}))
+        guest = root / 'guest.json'; guest.write_text(json.dumps({'display':display,'screen':screen,'once':False}))
         config = {'engine':str(ENGINE),'accounts':str(accounts),'guest_config':str(guest),'home':str(root/'home'),'guest_home':'/home/player','ipc':str(root/'ipc'),'prefix':str(root/'prefix'),'user':'player','writable_roots':[str(root/'prefix'),str(root/'game')],'read_only_roots':[],'runtime_mounts':mounts or [],'display':display,'graphics':False,'audio':False,'controllers':False,'network':network}
         if display != 'headless': config['wayland'] = str(Path(os.environ['XDG_RUNTIME_DIR']) / os.environ['WAYLAND_DISPLAY'])
         config_path = root / 'config.json'; config_path.write_text(json.dumps(config))
@@ -242,6 +242,13 @@ print(json.dumps({{'bytes':p.read_text(),'inode':p.stat().st_ino,'writable':writ
         root = self.start('display', display='nested-x11')
         details = json.loads(self.run_in(root,"import os,json,pathlib; print(json.dumps({'display':os.environ.get('DISPLAY'),'xauth':os.environ.get('XAUTHORITY'),'socket':pathlib.Path('/tmp/.X11-unix/X0').exists()}))"))
         self.assertEqual(details,{'display':':0','xauth':None,'socket':True})
+
+    def test_private_xwayland_screen_matches_the_game_resolution(self):
+        # A game larger than the X screen leaves the rest of its window undrawn.
+        if not os.environ.get('WAYLAND_DISPLAY') or not shutil.which('Xwayland'): self.skipTest('Wayland/Xwayland unavailable')
+        root = self.start('screen', display='nested-x11', screen={'fullscreen':False,'width':1024,'height':640})
+        size = self.run_in(root,"import ctypes; x=ctypes.CDLL('libX11.so.6'); x.XOpenDisplay.restype=ctypes.c_void_p; x.XDisplayWidth.argtypes=x.XDisplayHeight.argtypes=[ctypes.c_void_p,ctypes.c_int]; d=x.XOpenDisplay(None); print(x.XDisplayWidth(d,0), x.XDisplayHeight(d,0))")
+        self.assertEqual(size.split(), ['1024','640'])
 
     @unittest.skipUnless(os.environ.get('RESPAWN_TEST_WINE') == '1', 'set RESPAWN_TEST_WINE=1 for real Wine smoke tests')
     def test_real_wine_console_in_an_isolated_prefix(self):
