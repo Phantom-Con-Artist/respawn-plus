@@ -1,6 +1,27 @@
-# MO2 integration — design
+# Mod manager integration — design
 
-Status: approved for planning, 2026-10-24.
+Status: approved for planning, 2026-10-24. Generalised the same day: Respawn+ integrates
+mod managers in general (Mod Organizer 2, Vortex and others), not MO2 alone.
+
+## Scope: any mod manager, through adapters
+
+Respawn+ is a general launcher to run, play and configure Windows games and their mods the way
+players do on Windows. Any mod manager, script extender or trainer can already be added to a game
+as a companion app (any Windows executable). This design adds *guided* integration on top:
+
+- A `ModManagerAdapter` per manager knows how to install or locate it, prepare its per-game
+  instance, and build the command that launches the game through it. Each adapter declares what
+  it supports; the UI offers only those actions.
+- **Mod Organizer 2 is the first adapter**, because its virtual filesystem is proven under Proton
+  (below). **Vortex is the next**; it deploys mods with links into the game folder and needs its own
+  feasibility check under Proton before an adapter is written. Other managers follow the same trait.
+- The per-game toggle is generic: "Launch through mod manager" points at whichever companion
+  profile carries an adapter, not at MO2 specifically.
+- Trainers stay generic companion apps: standalone trainers and trainer apps such as WeMod are
+  added the same way and join the game's room.
+
+The sections below describe the MO2 adapter in detail; a Vortex adapter gets its own spec after
+its spike.
 
 ## Goal
 

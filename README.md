@@ -1,31 +1,73 @@
-# Respawn+
+<p align="center"><img src="public/brand/icon.svg" width="96" height="96" alt="Respawn+ logo: a voxel plus sign" /></p>
 
-Respawn+ is an open-source Linux game launcher foundation for running Windows games with Proton/Wine and managing the surrounding modding environment: prefixes, mods, trainers, load order, and per-game launch state. Original project work is licensed under **MIT**; see [LICENSE](LICENSE) and [NOTICE](NOTICE).
+# Respawn+ Launcher
 
-Two RPM/DEB editions are planned: **Full** bundles the tested Wine/Proton runtime stack, while **Lite** lets users supply their own runtimes. Lite packaging is available now; Full staging and integration requirements are documented in [distribution](docs/distribution.md). Third-party software retains its upstream licenses; see [third-party notices](THIRD_PARTY_NOTICES.md). Contributions follow [CONTRIBUTING.md](CONTRIBUTING.md).
+**Run, play and configure Windows games and their mods on Linux, the way you would on Windows.**
 
-See [the verified environment report](docs/environment.md) for installed versions, completed checks, and local runtime paths.
+Respawn+ is a general, open-source launcher. Each game gets its own Proton or Wine environment (a "room"), and any mod manager (Mod Organizer 2, Vortex or another), script extender or trainer (standalone, or apps like WeMod) can be added to it as a companion app and run alongside the game. They share one container, so they see the same files and the same Windows processes, just as on Windows.
 
-For a quick Windows test before Skyrim, [install and run Mines](docs/test-game.md)
-with `npm run test-game:setup` and `npm run test-game:play`.
+**Status: v0.1.0 Beta, coming soon.** Builds from source today; Lite RPM and DEB packages arrive with v0.1.0. Licensed under **MIT**; see [LICENSE](LICENSE), [NOTICE](NOTICE) and [third-party notices](THIRD_PARTY_NOTICES.md). Website: `website/` (Cloudflare Pages project `respawnplus`).
 
-## Development prerequisites
+<p>
+  <img src="website/public/shots/playtime-dark.jpg" width="49%" alt="Respawn+ launcher: playtime over the last 14 days, dark theme" />
+  <img src="website/public/shots/sessions-dark.jpg" width="49%" alt="Respawn+ launcher: recent play sessions, dark theme" />
+</p>
 
-- Rust stable and Cargo
-- Node.js 22.12+ (or 24 LTS) and npm
-- Tauri Linux dependencies (WebKitGTK, GTK, and build tools; see the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/))
-- Proton (usually provided by Steam) and/or Wine for running Windows games
+## What it does today
 
-The app discovers installed Windows games, saves them in a local bento library, and launches them with a selected Wine or Proton runner. See [the library guide](docs/library.md) for discovery scope, custom runners, and launch logs.
+- **Finds your games.** Scans folders for Windows games or imports any `.exe`. Nothing is copied or changed.
+- **One room per game.** An isolated Wine prefix with Proton through [UMU](https://github.com/Open-Wine-Components/umu-launcher), plain Wine, or a runner you choose.
+- **Any mod manager, script extender or trainer.** Add it to a game as a companion app; it inherits the game's runner and prefix and joins the game's container while the game runs (UMU `UMU_CONTAINER_NSENTER`).
+- **Display modes.** Fullscreen, borderless or windowed at your resolution, written into the game's own settings before launch (Skyrim SE and Fallout 4 today; other games keep their in-game setting).
+- **Playtime and sessions.** Every session timed, daily totals for 14 days, last played. Launches through a script extender count as play.
+- **Launch logs.** A separate log per game and companion launch. Proton's shared log is not used, so a companion app can no longer overwrite the game's crash output.
+- **Runtime discovery.** UMU, system Wine, native and Flatpak Steam Proton, Lutris Wine, and folders in `RESPAWN_RUNTIME_DIRS`.
+- **A desktop app.** Home dashboard, library with filters, a page per game, light and dark themes, built-in window controls. Your library is a local SQLite file.
 
-## Run
+## Modding: what is verified and what is next
+
+Verified on Fedora with GE-Proton 11-11, UMU 1.4.4 and Skyrim Special Edition 1.7.104:
+
+- The game, its script extender (SKSE 2.3.1) and a standalone trainer ran together in one room; the trainer found `SkyrimSE.exe` (process 400) and all of its options ran without a crash.
+- Mod Organizer 2.5.2 ran under Proton in the game's prefix: its own window, its virtual filesystem, and Skyrim started from MO2's Run button with a trainer alongside.
+
+Next (designed, not built): **guided mod manager integration** through per-manager adapters, with MO2 first and Vortex after its own Proton check: one-click setup, a per-game instance, and a "launch through mod manager" switch. See [the design](docs/superpowers/specs/2026-10-24-mod-manager-integration-design.md). Until then, add any manager as a companion app and launch the game from inside it.
+
+Compatibility varies by game and tool; Respawn+ says what was tested and does not promise universal Windows parity. It is not a sandbox: companion apps are ordinary Wine processes.
+
+## Repository layout
+
+This is an npm-workspaces monorepo.
+
+| Path | What it is |
+| --- | --- |
+| `src/`, `index.html` | Launcher frontend (Vite, vanilla JS) |
+| `src-tauri/` | Launcher backend (Rust, Tauri v2, SQLite) |
+| `docs/` | User and developer documentation, also published on the website |
+| `website/` | Website: landing page, docs, about, downloads (Astro, static) |
+| `packaging/`, `scripts/` | Lite/Full packaging, runtime installer, brand and test helpers |
+
+## Develop
+
+Prerequisites: Rust stable, Node.js 22.12+ and npm, the [Tauri Linux dependencies](https://v2.tauri.app/start/prerequisites/), and Proton (via UMU) and/or Wine.
 
 ```bash
 npm ci
-npm run tauri dev
+npm run tauri dev                 # run the launcher
+npm run site:dev                  # run the website at http://localhost:4321
 ```
 
-Build Lite Debian and RPM packages with `npm run bundle:lite`. Build Full packages after staging the runtime bundle with `npm run bundle:full`. To build only the executable, use `npm run bundle:lite -- --no-bundle`. These commands embed the frontend so the packaged app runs without Vite.
+Builds:
+
+```bash
+npm run bundle:lite               # Lite RPM and DEB (uses your own runtimes)
+npm run bundle:full               # Full packages, after staging the runtime bundle
+npm run bundle:lite -- --no-bundle --debug   # just the executable
+npm run site:build                # static website in website/dist/
+scripts/install-desktop-entry.sh  # menu entry and taskbar icon for a local build
+```
+
+The website deploys to Cloudflare Pages as project `respawnplus` (`website/wrangler.toml`): `cd website && npx wrangler pages deploy`.
 
 ## Verify
 
@@ -39,7 +81,7 @@ cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
 cargo run --manifest-path src-tauri/Cargo.toml -- --diagnose
 ```
 
-`--diagnose` initializes the local SQLite database and prints the actual detected runtimes without opening a window. Tests use temporary databases and do not change your game state.
+`--diagnose` initialises the local SQLite database and prints the detected runtimes without opening a window. Tests use temporary databases and never touch your game state.
 
 ## Fedora host setup
 
@@ -50,44 +92,28 @@ sudo dnf install webkit2gtk4.1-devel openssl-devel curl wget file \
   libappindicator-gtk3-devel librsvg2-devel libxdo-devel gcc gcc-c++ make
 ```
 
-For this AMD graphics machine, Wine and 32-bit graphics support:
+Wine and 32-bit graphics support (AMD example):
 
 ```bash
 sudo dnf install wine winetricks mesa-vulkan-drivers.i686 vulkan-loader.i686
 vulkaninfo --summary
 ```
 
-For non-Steam games, use [UMU](https://github.com/Open-Wine-Components/umu-launcher) with GE-Proton or UMU-Proton. Steam is not required for UMU. The installer uses the official UMU 1.4.4 zipapp release under `~/.local/share/respawn-plus/tools/umu/1.4.4`, linked from `~/.local/bin/umu-run`. Its SHA-256 was verified against the GitHub release asset digest. Existing UMU installations are retained. No third-party binaries are checked into this repository.
+For non-Steam games, use UMU with GE-Proton or UMU-Proton; Steam is not required. `npm run setup:runtime` installs the official UMU 1.4.4 zipapp with a pinned checksum under `~/.local/share/respawn-plus/tools/umu/1.4.4`, linked from `~/.local/bin/umu-run` (Python 3.10+; existing installations are kept). No third-party binaries are checked into this repository.
 
-Run `npm run setup:runtime` to reproduce the UMU installation with a pinned checksum. This requires Python 3.10+ and installs in your user directory.
-
-UMU can download Proton and the Steam Linux Runtime on its first run. To initialize a dedicated test prefix without starting a game:
+UMU downloads Proton and the Steam Linux Runtime on first run. To initialise a test prefix without starting a game:
 
 ```bash
 WINEPREFIX="$HOME/.local/share/respawn-plus/prefixes/runtime-check" \
   GAMEID=0 PROTONPATH=GE-Proton umu-run cmd.exe /c 'exit 0'
 ```
 
-See the [UMU manual](https://github.com/Open-Wine-Components/umu-launcher/blob/main/docs/umu.1.scd) for runner settings. Plain Wine uses a separate path and may need DXVK/vkd3d configured; Proton includes its own graphics components.
+## Data locations
 
-## Current foundation
+- Library: `$XDG_DATA_HOME/respawn-plus/respawn-plus.sqlite3` (normally `~/.local/share/respawn-plus/`), schema v4.
+- Prefixes: `~/.local/share/respawn-plus/prefixes/game-<id>`.
+- Launch logs: `~/.local/state/respawn-plus/logs/library/`.
 
-- Tauri v2 desktop shell
-- Artwork cards, search, running-game filter, folder discovery, and manual executable import
-- Per-game runtime/argument settings, isolated prefixes, launch supervision, exit status, and logs
-- [Companion apps](docs/companion-apps.md): launch Windows mod managers, SKSE/script extenders, trainers, and utilities in the game's shared environment
-- Rust backend with SQLite state persistence
-- Runtime discovery for UMU, Wine, native/Flatpak Steam Proton, and Lutris Wine
-- Versioned SQLite schema with transactions, WAL, and foreign keys for games, runtimes, prefixes, mods, launch profiles, and companion tools
-- No game files are copied or modified during discovery
+## Documentation
 
-The database is created at `$XDG_DATA_HOME/respawn-plus/respawn-plus.sqlite3` (normally `~/.local/share/respawn-plus/respawn-plus.sqlite3`). Additional Steam libraries/custom runners can be discovered by setting `RESPAWN_RUNTIME_DIRS` to colon-separated parent directories containing Proton/Wine installation folders. External Steam libraries are not automatically parsed yet.
-
-The initial setup used the temporary GameForge name. Its test database, prefix, and installed UMU files are preserved at their original paths; new app state uses Respawn+'s directory. No previously created local data was moved or removed during the rename.
-
-## Next milestone: Skyrim modding environment
-
-Discovery can add the existing `SkyrimSE.exe` to the library. Verify basic Skyrim launching next, then integrate Mod Organizer 2, SKSE, and trainers using the same game environment so they can see the same registry, files, and Windows processes. The schema reserves companion tool entries; tool supervision and mod deployment are not implemented yet.
-
-After basic launching, implement reversible mod deployment, conflict/load-order tracking, prefix backups, and tool launch profiles. Verify Skyrim/SKSE/game version compatibility for each setup. Existing [MO2 Linux integration](https://github.com/Furglitch/modorganizer2-linux-installer) provides useful reference material, but should be tested with this installation before integration. Compatibility varies by game and tool; universal Windows parity is an objective, not an established capability.
-
+[Your library](docs/library.md) · [Mods and trainers](docs/companion-apps.md) · [First test game](docs/test-game.md) · [Distribution](docs/distribution.md) · [Verified environment](docs/environment.md) · [Contributing](CONTRIBUTING.md)
