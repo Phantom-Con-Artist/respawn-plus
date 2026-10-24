@@ -527,8 +527,10 @@ impl RoomManager {
             )
             .map_err(err)?;
             let display = if profile.display == "auto" {
+                // Native Wayland gives every app in the room (game, mod manager, trainer) its own
+                // window on the desktop; the private Xwayland screen remains an explicit choice.
                 if std::env::var_os("WAYLAND_DISPLAY").is_some() {
-                    "nested-x11"
+                    "wayland"
                 } else if std::env::var_os("DISPLAY").is_some() {
                     return Err("Secure rooms need Wayland for a private game display. Host X11 access is not granted automatically.".into());
                 } else {

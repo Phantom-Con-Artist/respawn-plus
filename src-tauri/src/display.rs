@@ -27,9 +27,10 @@ impl fmt::Display for Screen {
 }
 
 /// Whether a room with this display profile shows games on its private X screen. Native Wayland
-/// and headless rooms have no such screen, so their games keep their own window settings.
+/// (the automatic choice) and headless rooms have no such screen, so their games keep their own
+/// window settings.
 pub fn room_shows(profile_display: &str) -> bool {
-    matches!(profile_display, "auto" | "nested-x11")
+    profile_display == "nested-x11"
 }
 
 /// Fullscreen and windowed use the user's resolution (fullscreen scales it to fill the monitor);
@@ -91,6 +92,12 @@ mod tests {
             screen("windowed", w, h, None).unwrap().to_string(),
             "window 1600×900"
         );
+    }
+
+    #[test]
+    fn only_the_one_window_room_display_carries_the_mode() {
+        assert!(room_shows("nested-x11"));
+        assert!(!room_shows("auto") && !room_shows("wayland") && !room_shows("headless"));
     }
 
     #[test]

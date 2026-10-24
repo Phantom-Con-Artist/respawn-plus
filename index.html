@@ -131,7 +131,7 @@
             <details class="card span-6 recovery-panel"><summary>Room compatibility</summary>
               <p class="muted">The game and companion apps share one protected room. Changes apply when the room opens again.</p>
               <label>Connection<select id="room-network"><option value="online">Online</option><option value="offline">Offline</option></select></label>
-              <label>Display<select id="room-display"><option value="auto">Automatic private display</option><option value="nested-x11">Private Xwayland display</option><option value="wayland">Native Wayland</option><option value="headless">No display</option></select></label>
+              <label>Display<select id="room-display"><option value="auto">Automatic (separate windows)</option><option value="nested-x11">One window for the whole room</option><option value="wayland">Separate windows (native Wayland)</option><option value="headless">No display</option></select></label>
               <label>Shared dependencies<select id="room-packages" multiple size="3" aria-describedby="room-package-note"></select></label>
               <p id="room-package-note" class="muted small">Detected dependencies are selected automatically. A compatibility profile can pin specific versions.</p>
               <label class="room-option"><input id="room-audio" type="checkbox" /> Audio access, including recording</label>

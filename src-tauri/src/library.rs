@@ -1340,7 +1340,8 @@ mod tests {
         assert!(prefix.is_empty());
         let folder: Vec<_> = fs::read_dir(&folder).unwrap().collect();
         assert_eq!(folder.len(), 2);
-        assert!(launcher.games().unwrap()[0].display_supported);
+        // Rooms default to separate native Wayland windows, where the game keeps its own window mode.
+        assert!(!launcher.games().unwrap()[0].display_supported);
     }
 
     fn wait_for_exit(launcher: &Launcher, launch_id: i64) {

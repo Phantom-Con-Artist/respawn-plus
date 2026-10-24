@@ -4,7 +4,7 @@ The production launch path starts a bubblewrap supervisor for each game. Every g
 
 Rooms receive a private home, `/tmp`, `/proc`, PID/IPC/user/mount/network namespaces, dropped capabilities and a libseccomp filter. Host environment variables and file descriptors are not inherited by game commands. The launcher database, other rooms, personal home files, SSH agents and host session D-Bus are not mounted. Game and companion folders are explicit writable grants; overly broad folders and folders overlapping another registered room are rejected.
 
-Wayland desktops default to a private rootful Xwayland display. Native Wayland and headless modes are available. Host X11 is not exposed. Proton uses a private D-Bus daemon for UMU launcher-service discovery. All companions share the outer room and UMU reuses its per-prefix inner container.
+On Wayland desktops, rooms default to native Wayland: the game, its mod manager and its trainer each get their own window, and Wayland keeps them from reading other windows. A private rootful Xwayland display (one window for the whole room, where Vessel sets the display mode) and a headless mode are available per game. Host X11 is not exposed. Proton uses a private D-Bus daemon for UMU launcher-service discovery. All companions share the outer room and UMU reuses its per-prefix inner container.
 
 Online rooms use pasta with a private network namespace, DNS forwarding and automatic port forwarding disabled. This avoids sharing host abstract Unix sockets. Online access includes reachable LAN services; it is not an internet-only firewall. Offline rooms have no external network. GPU rendering and selected joystick devices are exposed. Audio socket access can include recording, which the UI explicitly states.
 

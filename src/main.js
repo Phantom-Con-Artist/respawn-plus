@@ -367,7 +367,7 @@ function renderGame() {
   const custom = displayMode() === 'fullscreen' || displayMode() === 'windowed';
   $('#display-width').disabled = $('#display-height').disabled = displayLocked || !custom;
   $('#display-note').textContent = game.display_supported ? 'The game is shown on its room’s own screen. Vessel sets that screen, never the game’s files, so this works for any game.' :
-    'This room shows the game directly (native Wayland or headless), so the game keeps its own window settings.';
+    'Each app in this room gets its own window, so the game uses its own window settings. Choose “One window for the whole room” under Display to set them here.';
   renderTools(game);
   renderRecovery(game);
   renderRoomProfile(game);
