@@ -16,7 +16,7 @@ function rehypeDocLinks() {
 
 // Static output for Cloudflare Pages (project "respawnplus"); deploy with `npm run deploy -w website`.
 export default defineConfig({
-  site: 'https://respawnplus.pages.dev',
+  site: 'https://respawnplus.mavern.in',
   output: 'static',
   trailingSlash: 'ignore',
   markdown: { rehypePlugins: [rehypeDocLinks] },
