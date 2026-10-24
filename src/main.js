@@ -73,7 +73,7 @@ function relative(value) {
 function clock(value) { return parseTime(value)?.toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) ?? ''; }
 const MODE_NAMES = { default: 'Game default', fullscreen: 'Fullscreen', borderless: 'Borderless', windowed: 'Windowed' };
 function displayLabel(game) {
-  if (!game.display_supported) return 'In-game setting';
+  if (!game.display_supported) return 'Game’s own window';
   return MODE_NAMES[game.display_mode] + (game.display_mode !== 'default' && game.display_width ? ' · ' + game.display_width + '×' + game.display_height : '');
 }
 function runnerName(game) {
@@ -360,10 +360,11 @@ function renderGame() {
   const displayLocked = locked || !game.display_supported;
   for (const input of $('#display-panel').querySelectorAll('input')) input.disabled = displayLocked;
   $('#use-screen').disabled = displayLocked;
-  const custom = displayMode() !== 'default';
+  // Default and borderless fill the monitor at its own resolution; the size is only for the others.
+  const custom = displayMode() === 'fullscreen' || displayMode() === 'windowed';
   $('#display-width').disabled = $('#display-height').disabled = displayLocked || !custom;
-  $('#display-note').textContent = game.display_supported ? 'Respawn+ sets the window mode in the game’s own settings just before it starts.' :
-    'This game keeps its window mode in its own options menu. Respawn+ can set it for Skyrim Special Edition and Fallout 4.';
+  $('#display-note').textContent = game.display_supported ? 'The game is shown on its room’s own screen. Respawn+ sets that screen, never the game’s files, so this works for any game.' :
+    'This room shows the game directly (native Wayland or headless), so the game keeps its own window settings.';
   renderTools(game);
   renderRecovery(game);
   renderRoomProfile(game);

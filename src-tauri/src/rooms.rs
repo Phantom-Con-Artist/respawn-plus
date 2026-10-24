@@ -2,6 +2,7 @@
 //! A room owns a persistent bubblewrap namespace; each launch is a client of its supervisor.
 //! The package store and profile format have no knowledge of game titles or mod managers.
 use crate::{
+    display,
     library::{Game, Launcher},
     recovery,
 };
@@ -186,24 +187,6 @@ fn valid_profile(profile: &RoomProfile) -> Result<(), String> {
         return Err("Invalid room runtime requirements or pins".into());
     }
     Ok(())
-}
-
-/// Size of the room's private X screen. A game that renders larger than this screen leaves the rest
-/// of its window undrawn, so it follows the game's own display setting, else the user's monitor.
-fn xwayland_screen(game: &Game, monitor: Option<(u32, u32)>) -> Result<Value, String> {
-    let fullscreen = game.display_mode != "windowed";
-    let size = match (
-        game.display_mode.as_str(),
-        game.display_width,
-        game.display_height,
-    ) {
-        ("default", ..) | (_, None, _) | (_, _, None) => monitor,
-        (_, Some(width), Some(height)) => Some((width, height)),
-    };
-    let (width, height) = size.ok_or(
-        "Cannot determine the monitor size for this room's display. Set a resolution in the game's display settings.",
-    )?;
-    Ok(json!({"fullscreen":fullscreen,"width":width,"height":height}))
 }
 
 fn writable_roots(game: &Game, data: &Path) -> Result<Vec<PathBuf>, String> {
@@ -395,6 +378,18 @@ impl RoomManager {
                 .arg(json!({"diagnostics":true,"screenshot":screenshot}).to_string()),
         )
     }
+    /// The private X screen a new room for this game gets. A game that renders larger than this
+    /// screen leaves the rest of its window undrawn, so it is never smaller than the game's setting.
+    pub(crate) fn screen(&self, game: &Game) -> Result<display::Screen, String> {
+        let monitor = *self.monitor.lock().map_err(err)?;
+        display::screen(
+            &game.display_mode,
+            game.display_width,
+            game.display_height,
+            monitor,
+        )
+    }
+
     pub(crate) fn set_monitor(&self, size: Option<(u32, u32)>) -> Result<(), String> {
         *self.monitor.lock().map_err(err)? = size;
         Ok(())
@@ -575,8 +570,8 @@ impl RoomManager {
             let guest_config = root.join(format!("supervisor-{stamp}.json"));
             let config_path = root.join(format!("session-{stamp}.json"));
             let screen = if display == "nested-x11" {
-                let monitor = *self.monitor.lock().map_err(err)?;
-                xwayland_screen(game, monitor)?
+                let screen = self.screen(game)?;
+                json!({"fullscreen":screen.fullscreen,"width":screen.width,"height":screen.height})
             } else {
                 Value::Null
             };
@@ -848,43 +843,5 @@ impl Launcher {
             .collect::<Result<Vec<_>, String>>()?;
         db.execute("INSERT INTO room_profiles(game_id,profile_json) VALUES (?1,?2) ON CONFLICT(game_id) DO UPDATE SET profile_json=excluded.profile_json", params![game.id,serde_json::to_string(&game.room.profile).map_err(err)?]).map_err(err)?;
         Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::library::Launcher;
-
-    #[test]
-    fn room_screen_follows_the_game_setting_else_the_launcher_monitor() {
-        let temp = tempfile::tempdir().unwrap();
-        let launcher = Launcher::at(temp.path().join("state"), temp.path().join("logs")).unwrap();
-        let exe = temp.path().join("Game.exe");
-        fs::write(&exe, b"MZtest").unwrap();
-        let mut game = launcher.import(&exe, None, "manual").unwrap();
-        let screen = |game: &Game, monitor| xwayland_screen(game, monitor).ok();
-
-        // No resolution of its own: fill the monitor the launcher reported, or refuse to guess.
-        assert_eq!(
-            screen(&game, Some((2560, 1440))),
-            Some(json!({"fullscreen":true,"width":2560,"height":1440}))
-        );
-        assert_eq!(screen(&game, None), None);
-
-        game.display_width = Some(1600);
-        game.display_height = Some(900);
-        for mode in ["fullscreen", "borderless"] {
-            game.display_mode = mode.into();
-            assert_eq!(
-                screen(&game, Some((2560, 1440))),
-                Some(json!({"fullscreen":true,"width":1600,"height":900}))
-            );
-        }
-        game.display_mode = "windowed".into();
-        assert_eq!(
-            screen(&game, None),
-            Some(json!({"fullscreen":false,"width":1600,"height":900}))
-        );
     }
 }

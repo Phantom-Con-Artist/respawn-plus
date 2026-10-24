@@ -212,6 +212,7 @@ impl Launcher {
                 let (play_seconds, sessions, daily_play) = sessions_for_game(&db, row.get(0)?)?;
                 let mut room = rooms::status(&db, row.get(0)?)?;
                 room.active = self.rooms.active(row.get(0)?);
+                let display_supported = display::room_shows(&room.profile.display);
                 Ok(Game {
                     room,
                     recovery: recovery::status(&db, row.get(0)?, Path::new(&executable))?,
@@ -221,7 +222,7 @@ impl Launcher {
                     id: row.get(0)?,
                     name: row.get(1)?,
                     available: Path::new(&executable).is_file(),
-                    display_supported: display::supported(Path::new(&executable)),
+                    display_supported,
                     executable,
                     source: row.get(3)?,
                     runtime_kind: row.get(4)?,
@@ -407,8 +408,6 @@ impl Launcher {
             }
         }
         let checkpoint_game = game.clone();
-        // Display settings belong to the game even when SKSE or a manager starts it.
-        let game_executable = PathBuf::from(&game.executable);
         let script_active = game
             .tools
             .iter()
@@ -471,20 +470,12 @@ impl Launcher {
             game.name, game.executable, game.runtime_path, game.prefix
         )
         .map_err(|e| e.to_string())?;
-        if counts_as_play {
-            let applied = display::apply(
-                Path::new(&game.prefix),
-                &game.runtime_kind,
-                &game_executable,
-                &game.display_mode,
-                game.display_width.unwrap_or(0),
-                game.display_height.unwrap_or(0),
-            )?;
-            if let Some(note) = applied {
-                writeln!(log, "Display: {note}\n").map_err(|e| e.to_string())?;
-            }
-        }
         if self.uses_sandbox() {
+            // The screen is fixed when the room opens; apps joining a running room share it.
+            if !self.rooms.active(id) && display::room_shows(&game.room.profile.display) {
+                let screen = self.rooms.screen(&checkpoint_game)?;
+                writeln!(log, "Display: {screen}\n").map_err(|e| e.to_string())?;
+            }
             command = self.room_command(&checkpoint_game, command)?;
         }
         // No PROTON_LOG: companions inherit the first app's environment in a shared container and
@@ -1212,13 +1203,13 @@ mod tests {
     }
 
     #[test]
-    fn script_extender_launch_applies_the_game_display_mode_before_starting() {
+    fn display_mode_is_applied_by_the_room_and_never_written_into_game_files() {
         let temp = tempfile::tempdir().unwrap();
         let launcher = Launcher::at(temp.path().join("state"), temp.path().join("logs")).unwrap();
-        let folder = temp.path().join("Skyrim");
+        let folder = temp.path().join("Any Game");
         fs::create_dir_all(&folder).unwrap();
-        let exe = folder.join("SkyrimSE.exe");
-        let loader = folder.join("skse64_loader.exe");
+        let exe = folder.join("Game.exe");
+        let loader = folder.join("loader.exe");
         fs::write(&exe, b"MZtest").unwrap();
         fs::write(&loader, b"MZtest").unwrap();
         let runner = temp.path().join("wine-test");
@@ -1238,30 +1229,27 @@ mod tests {
                 launch_via_tool_id: None,
             })
             .unwrap();
-        let skse = launcher
+        let loader_tool = launcher
             .save_tool(ToolSettings {
                 id: None,
                 game_id: game.id,
                 kind: "script_extender".into(),
-                name: "SKSE".into(),
+                name: "Loader".into(),
                 executable: loader.display().to_string(),
                 arguments: vec![],
                 working_directory: String::new(),
             })
             .unwrap();
-        let launch = launcher.launch_tool(skse.id).unwrap();
-        let user = std::env::var("USER").unwrap_or_else(|_| "user".into());
-        let prefs = Path::new(&game.prefix)
-            .join("drive_c/users")
-            .join(user)
-            .join("Documents/My Games/Skyrim Special Edition/SkyrimPrefs.ini");
-        assert_eq!(
-            fs::read_to_string(prefs).unwrap(),
-            "[Display]\nbFull Screen=0\nbBorderless=1\niSize W=2560\niSize H=1440\n"
-        );
-        assert!(read_log(&launch.log_path)
-            .unwrap()
-            .contains("Display: borderless 2560×1440"));
+        let launch = launcher.launch_tool(loader_tool.id).unwrap();
+        wait_for_exit(&launcher, launch.id);
+        // The room's screen carries the mode; the game's prefix and folder are left as they were.
+        let prefix: Vec<_> = fs::read_dir(&game.prefix)
+            .map(|entries| entries.collect())
+            .unwrap_or_default();
+        assert!(prefix.is_empty());
+        let folder: Vec<_> = fs::read_dir(&folder).unwrap().collect();
+        assert_eq!(folder.len(), 2);
+        assert!(launcher.games().unwrap()[0].display_supported);
     }
 
     fn wait_for_exit(launcher: &Launcher, launch_id: i64) {

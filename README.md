@@ -18,7 +18,7 @@ Respawn+ is a general, open-source launcher. Each game gets its own Proton or Wi
 - **Finds your games.** Scans folders for Windows games or imports any `.exe`. Nothing is copied or changed.
 - **One room per game.** An isolated Wine prefix with Proton through [UMU](https://github.com/Open-Wine-Components/umu-launcher), plain Wine, or a runner you choose.
 - **Any mod manager, script extender or trainer.** Add it to a game as a companion app; it inherits the game's runner and prefix and joins the game's container while the game runs (UMU `UMU_CONTAINER_NSENTER`).
-- **Display modes.** Fullscreen, borderless or windowed at your resolution, written into the game's own settings before launch (Skyrim SE and Fallout 4 today; other games keep their in-game setting).
+- **Display modes.** Fullscreen, borderless or windowed at your resolution, for any game: Respawn+ sets the room's own screen and never edits the game's files.
 - **Playtime and sessions.** Every session timed, daily totals for 14 days, last played. Launches through a script extender count as play.
 - **Launch logs.** A separate log per game and companion launch. Proton's shared log is not used, so a companion app can no longer overwrite the game's crash output.
 - **Room recovery.** Automatic setup checkpoints and restore with current mapped saves preserved, initially for Skyrim SE and Fallout 4. Btrfs snapshots where available, reflinks or copies elsewhere; see [support and limits](docs/room-recovery.md).
