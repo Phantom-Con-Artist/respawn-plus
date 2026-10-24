@@ -84,3 +84,4 @@ function wordmark(letters, cyan, deep) {
 writeFileSync('public/brand/wordmark.svg', wordmark(TEAL, CYAN, TEAL));
 writeFileSync('public/brand/wordmark-dark.svg', wordmark('#e9eef2', CYAN, TEAL_ON_DARK));
 writeFileSync('website/public/wordmark.svg', wordmark('#e9eef2', CYAN, TEAL_ON_DARK));
+writeFileSync('website/public/wordmark-light.svg', wordmark(TEAL, CYAN, TEAL));

@@ -21,17 +21,18 @@ const repo = 'https://github.com/Phantom-Con-Artist/respawn-plus';
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;800;900&family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet" />
-    <script is:inline>document.documentElement.classList.remove('no-js');</script>
+    <script is:inline>document.documentElement.classList.remove('no-js');(() => { let t = null; try { t = localStorage.getItem('vessel-site-theme'); } catch {} document.documentElement.dataset.theme = t || (matchMedia('(prefers-color-scheme: light)').matches ? 'dawn' : 'dusk'); })();</script>
   </head>
   <body>
     <a class="skip" href="#main">Skip to content</a>
     <header class="carriage-head">
-      <a class="wordmark" href="/" aria-label="Vessel home"><img src="/wordmark.svg" alt="Vessel" width="138" height="28" /></a>
+      <a class="wordmark" href="/" aria-label="Vessel home"><img class="wm-night" src="/wordmark.svg" alt="Vessel" width="138" height="28" /><img class="wm-day" src="/wordmark-light.svg" alt="Vessel" width="138" height="28" /></a>
       <nav aria-label="Main">
         <a href="/docs/" aria-current={current === 'docs' ? 'page' : undefined}>Docs</a>
         <a href="/downloads/" aria-current={current === 'downloads' ? 'page' : undefined}>Downloads</a>
         <a href="/about/" aria-current={current === 'about' ? 'page' : undefined}>About</a>
         <a href={repo}>GitHub</a>
+        <button class="theme-toggle" type="button" id="theme-toggle">Dawn</button>
       </nav>
     </header>
     <main id="main"><slot /></main>
@@ -39,7 +40,7 @@ const repo = 'https://github.com/Phantom-Con-Artist/respawn-plus';
       <div class="terminus-line" aria-hidden="true"><span></span></div>
       <div class="terminus-grid">
         <div class="terminus-name">
-          <img class="terminus-sign" src="/wordmark.svg" alt="Vessel" width="400" height="81" loading="lazy" />
+          <img class="terminus-sign wm-night" src="/wordmark.svg" alt="Vessel" width="400" height="81" loading="lazy" /><img class="terminus-sign wm-day" src="/wordmark-light.svg" alt="Vessel" width="400" height="81" loading="lazy" />
           <p>Windows games on Linux, with their mods, in one room. Free and open source, MIT. v0.1.0 Beta, a showcase build tested with Skyrim Special Edition.</p>
         </div>
         <div><h2>Ride</h2><a href="/downloads/">Downloads</a><a href="/docs/">Documentation</a><a href="/about/">About</a></div>
@@ -49,6 +50,18 @@ const repo = 'https://github.com/Phantom-Con-Artist/respawn-plus';
       <p class="terminus-small">Game artwork belongs to its publishers and is shown from Steam as illustration only. © 2026 Vessel contributors.</p>
     </footer>
     <script>
+      // Dawn or dusk: the toggle names the light it switches to, and remembers the choice.
+      const toggle = document.getElementById('theme-toggle');
+      const label = () => { if (toggle) toggle.textContent = document.documentElement.dataset.theme === 'dawn' ? 'Dusk' : 'Dawn'; };
+      label();
+      toggle?.addEventListener('click', () => {
+        const next = document.documentElement.dataset.theme === 'dawn' ? 'dusk' : 'dawn';
+        document.documentElement.dataset.theme = next;
+        try { localStorage.setItem('vessel-site-theme', next); } catch {}
+        label();
+        dispatchEvent(new Event('vessel-theme'));
+      });
+
       // Arrivals: a section's parts settle in once as it reaches the window. Without script, all is shown.
       const io = new IntersectionObserver((entries) => {
         for (const entry of entries) if (entry.isIntersecting) { entry.target.classList.add('in'); io.unobserve(entry.target); }

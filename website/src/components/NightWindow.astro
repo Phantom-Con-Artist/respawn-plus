@@ -1,7 +1,7 @@
 ---
 // SPDX-License-Identifier: MIT
-// The carriage window: a night city generated from a seed slides past behind the glass. The sky
-// follows the visitor's own hour; scrolling is the throttle. Without script, a still night shows.
+// The carriage window: a city generated from a seed slides past behind the glass, at dusk or at
+// dawn with the page's theme; scrolling is the throttle. Without script, a still night shows.
 interface Props { size?: 'full' | 'slim'; label?: string }
 const { size = 'full', label = 'A night city passing outside a train window' } = Astro.props;
 ---
@@ -24,11 +24,11 @@ const { size = 'full', label = 'A night city passing outside a train window' } =
   };
 
   // Sky by the visitor's hour: dusk, deep night or first light. Colours are the page's own.
-  const sky = (hour: number) => {
-    if (hour >= 17 && hour < 20) return { top: '#0b1324', mid: '#2a1b3d', low: '#ff7a3d', glow: 'rgba(255,122,61,0.55)' };
-    if (hour >= 5 && hour < 8) return { top: '#0e1d2b', mid: '#1f3f4f', low: '#f2b48a', glow: 'rgba(24,230,228,0.35)' };
-    return { top: '#05070d', mid: '#0e1d2b', low: '#123344', glow: 'rgba(24,230,228,0.45)' };
-  };
+  const day = () => document.documentElement.dataset.theme === 'dawn';
+  // Two lights: dawn for the light theme, dusk for the dark one.
+  const sky = (_hour: number) => day()
+    ? { top: '#8fb3c9', mid: '#d8c6d4', low: '#ffd3ae', glow: 'rgba(255,214,176,0.75)' }
+    : { top: '#0b1324', mid: '#2a1b3d', low: '#ff7a3d', glow: 'rgba(255,122,61,0.5)' };
 
   function city(random: () => number, depth: number, span: number, palette: { base: string; window: string[] }, tall: number): Layer {
     const buildings: Building[] = [];
@@ -78,7 +78,7 @@ const { size = 'full', label = 'A night city passing outside a train window' } =
       const haze = context!.createLinearGradient(0, horizon - height * 0.32, 0, horizon + 6);
       haze.addColorStop(0, 'rgba(0,0,0,0)'); haze.addColorStop(1, colours.glow);
       context!.fillStyle = haze; context!.fillRect(0, horizon - height * 0.32, width, height * 0.32 + 6);
-      context!.fillStyle = '#18e6e4'; context!.fillRect(0, horizon - 1, width, 2);
+      context!.fillStyle = day() ? 'rgba(255,240,210,0.9)' : '#18e6e4'; context!.fillRect(0, horizon - 1, width, 2);
 
       for (const layer of layers) {
         const offset = (travelled * (0.08 + layer.depth * 0.9)) % layer.span;
@@ -90,13 +90,13 @@ const { size = 'full', label = 'A night city passing outside a train window' } =
             if (x > width || x + w < 0) continue;
             const h = b.h * horizon * (0.7 + layer.depth * 0.35);
             const top = horizon + layer.depth * height * 0.18 - h;
-            context!.fillStyle = layer.base; context!.fillRect(x, top, w, height - top);
+            context!.fillStyle = day() ? ['#9fb3c4', '#6f879b', '#3f5263'][layers.indexOf(layer)] : layer.base; context!.fillRect(x, top, w, height - top);
             const cell = 7 + layer.depth * 6, gap = cell * 0.55;
             let i = 0;
             for (let wy = top + cell; wy < horizon + layer.depth * 40 - cell; wy += cell + gap) {
               for (let wx = x + gap; wx < x + w - cell; wx += cell + gap) {
                 const v = b.lit[i++ % b.lit.length];
-                if (v < 0.74) continue;
+                if (v < (day() ? 0.95 : 0.74)) continue;
                 context!.globalAlpha = 0.35 + (v - 0.74) * 2.2;
                 context!.fillStyle = layer.window[i % layer.window.length];
                 context!.fillRect(wx, wy, cell * 0.7, cell * 0.5);
@@ -141,6 +141,7 @@ const { size = 'full', label = 'A night city passing outside a train window' } =
       draw(now);
       frame = visible ? requestAnimationFrame(tick) : 0;
     };
+    addEventListener('vessel-theme', () => draw(performance.now()));
     new ResizeObserver(resize).observe(host);
     resize();
     if (reduced) continue;
