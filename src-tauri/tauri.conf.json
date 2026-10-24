@@ -1,11 +1,11 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Respawn+ Launcher",
-  "mainBinaryName": "respawn-plus",
+  "productName": "Vessel",
+  "mainBinaryName": "vessel",
   "version": "0.1.0",
-  "identifier": "dev.respawnplus.launcher",
+  "identifier": "dev.vessel.launcher",
   "build": { "beforeDevCommand": "npm run dev", "devUrl": "http://localhost:1420", "beforeBuildCommand": "npm run build", "frontendDist": "../dist" },
-  "app": { "windows": [{ "label": "main", "title": "Respawn+ Launcher", "width": 1440, "height": 960, "maximized": true, "decorations": false, "minWidth": 720, "minHeight": 560 }], "security": { "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src ipc: http://ipc.localhost; img-src 'self' data: https://shared.akamai.steamstatic.com" } },
+  "app": { "windows": [{ "label": "main", "title": "Vessel", "width": 1440, "height": 960, "maximized": true, "decorations": false, "minWidth": 720, "minHeight": 560 }], "security": { "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src ipc: http://ipc.localhost; img-src 'self' data: https://shared.akamai.steamstatic.com" } },
   "bundle": {
     "active": true,
     "targets": ["deb", "rpm"],
@@ -13,10 +13,10 @@
     "shortDescription": "Linux game launcher and modding environment",
     "license": "MIT",
     "licenseFile": "../LICENSE",
-    "copyright": "Copyright (C) 2026 Respawn+ contributors",
+    "copyright": "Copyright (C) 2026 Vessel contributors",
     "resources": {
-      "../LICENSE": "licenses/Respawn+/LICENSE",
-      "../NOTICE": "licenses/Respawn+/NOTICE",
+      "../LICENSE": "licenses/Vessel/LICENSE",
+      "../NOTICE": "licenses/Vessel/NOTICE",
       "../THIRD_PARTY_NOTICES.md": "licenses/THIRD_PARTY_NOTICES.md",
       "../test-games/licenses/mines-LICENCE.txt": "licenses/Mines/LICENCE.txt"
     },

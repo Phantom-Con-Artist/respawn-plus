@@ -1,6 +1,6 @@
 # Room recovery
 
-Respawn+ can restore a supported game's setup while keeping its current saves. Open the game's **Overview → Room recovery**, choose a restore point, and select **Restore setup · keep saves**. Close the game and companions first. A **Before restore — undo** checkpoint preserves the setup you are replacing.
+Vessel can restore a supported game's setup while keeping its current saves. Open the game's **Overview → Room recovery**, choose a restore point, and select **Restore setup · keep saves**. Close the game and companions first. A **Before restore — undo** checkpoint preserves the setup you are replacing.
 
 ## Current support
 
@@ -14,7 +14,7 @@ Other games can enable recovery through data-driven room profiles: `save_paths` 
 
 ## What is restored
 
-Before the first game or companion process opens a supported room, Respawn+ checkpoints:
+Before the first game or companion process opens a supported room, Vessel checkpoints:
 
 - The room's Wine/Proton prefix, registry, private home, and pinned shared-package/profile references. Shared runtime payloads stay in the global store.
 - The directory containing the game executable.
@@ -29,9 +29,9 @@ The last three automatic **Before session** checkpoints are retained. Manual and
 
 ## Storage and consistency
 
-New prefixes use Btrfs subvolumes only when deletion is supported by the mount policy; otherwise they use normal directories and reflinks/copies. Existing prefixes are not automatically converted. A source that is an accessible Btrfs subvolume with no nested subvolumes uses a native snapshot. When nested subvolumes exist, or inspection/snapshotting is unavailable, Respawn+ uses GNU `cp --archive --reflink=auto`: reflinks where supported and independent copies otherwise. Writable hardlink trees are never used. Native Btrfs checkpoint snapshots are read-only; copied checkpoints live in a private application directory, not an enforced read-only security boundary.
+New prefixes use Btrfs subvolumes only when deletion is supported by the mount policy; otherwise they use normal directories and reflinks/copies. Existing prefixes are not automatically converted. A source that is an accessible Btrfs subvolume with no nested subvolumes uses a native snapshot. When nested subvolumes exist, or inspection/snapshotting is unavailable, Vessel uses GNU `cp --archive --reflink=auto`: reflinks where supported and independent copies otherwise. Writable hardlink trees are never used. Native Btrfs checkpoint snapshots are read-only; copied checkpoints live in a private application directory, not an enforced read-only security boundary.
 
-One process holds the library's advisory lock, and launch/settings/recovery mutations share a mutex. Before checkpoints or restores, Respawn+ checks recorded launches and visible same-user `/proc` environments for processes using the prefix. This catches ordinary Wine children left behind after a launcher exits. Unreadable environments and independent programs writing the same folders cannot be proven idle by this check; robust adversarial process ownership needs the future room supervisor/sandbox.
+One process holds the library's advisory lock, and launch/settings/recovery mutations share a mutex. Before checkpoints or restores, Vessel checks recorded launches and visible same-user `/proc` environments for processes using the prefix. This catches ordinary Wine children left behind after a launcher exits. Unreadable environments and independent programs writing the same folders cannot be proven idle by this check; robust adversarial process ownership needs the future room supervisor/sandbox.
 
 Snapshots and clones are flushed before publication. SQLite contains manifests and a durable restore intent, not copies of live databases. The current launcher's WAL database remains outside captured trees. Restores stage each tree beside its destination for same-filesystem renames, publish the intent, then switch directories and transactionally restore the room's database configuration. Multiple directory switches are not atomic as a group: the journal lets startup finish an interrupted restore before allowing new launches or edits. Previous directories are collected only after commit. Failed preparation and retired checkpoint trees are tracked for cleanup.
 

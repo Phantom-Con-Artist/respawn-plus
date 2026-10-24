@@ -1,4 +1,4 @@
-# The Respawn+ game library
+# The Vessel game library
 
 Start with `npm run tauri dev`, or run the built desktop executable. The app
 opens a persistent local library. On the first empty-library launch, it scans
@@ -14,7 +14,7 @@ other games and failed remote image loads have a name fallback.
 
 ## Discovery scope
 
-Default roots are Respawn+'s installed test games, `~/Games`, the configured
+Default roots are Vessel's installed test games, `~/Games`, the configured
 Downloads folder plus `~/Downloads`, and common native/Flatpak Steam library
 locations. Discovery is heuristic: it searches for Windows executables, prefers
 a game over an adjacent launcher, and excludes common installers, uninstallers,
@@ -35,7 +35,7 @@ launch adapters. Manual import covers Windows games outside the scanned roots.
 ## Launch behavior
 
 Proton uses UMU, with the selected Proton installation and a per-game prefix
-under `~/.local/share/respawn-plus/prefixes/game-<id>`. Wine uses the chosen Wine
+under `~/.local/share/vessel/prefixes/game-<id>`. Wine uses the chosen Wine
 executable and that same game's prefix. Close the game before changing runners;
 runner switching can modify an existing prefix, and automatic prefix backups
 are not part of this milestone.
@@ -44,12 +44,12 @@ The executable's parent is the working directory. Arguments are one per line
 and are passed as literal process arguments; a shell is not used. The app
 tracks the runtime process, prevents duplicate launches it knows are running,
 updates the running filter, and records exit status and last-played time.
-Games started externally are not attached to Respawn+'s launch tracking.
+Games started externally are not attached to Vessel's launch tracking.
 
-Launch logs are under `~/.local/state/respawn-plus/logs/library/game-<id>/`.
+Launch logs are under `~/.local/state/vessel/logs/library/game-<id>/`.
 **View launch log** displays up to the last 64 KiB of the latest launch's output;
 Proton's separate detailed log is retained in that game's log directory too.
-Closing Respawn+ does not terminate games. On reopening, Linux process start
+Closing Vessel does not terminate games. On reopening, Linux process start
 tokens identify a live tracked runtime; if it ended while the app was closed,
 the outcome is marked unknown rather than inventing a successful exit code.
 
@@ -59,8 +59,8 @@ existing game records. App data follows XDG directories. The local
 library can also be inspected with:
 
 ```bash
-src-tauri/target/debug/respawn-plus --list-games
-src-tauri/target/debug/respawn-plus --scan-games
+src-tauri/target/debug/vessel --list-games
+src-tauri/target/debug/vessel --scan-games
 ```
 
 Mines is the launch verification target. Skyrim can appear in the library

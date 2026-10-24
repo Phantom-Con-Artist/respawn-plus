@@ -13,7 +13,7 @@ Native Linux manager binaries and MSI packages are not supported by this picker.
 
 Each profile has its own running state, launch history, and **Log** action. Edit
 and removal are blocked while that app is running. Removing a profile deletes
-only Respawn+'s metadata/history; executable files, mods, logs on disk, and the
+only Vessel's metadata/history; executable files, mods, logs on disk, and the
 game prefix are retained. Runtime changes are blocked while the game or any
 of its companion apps are active.
 
@@ -23,7 +23,7 @@ Start the game (or its SKSE profile) and open the trainer from the same game's
 Companion apps tab. Both use one prefix and one selected runner so they can see
 the same Windows processes.
 
-For Proton, Respawn+ enables UMU's `UMU_CONTAINER_NSENTER=1` integration. The
+For Proton, Vessel enables UMU's `UMU_CONTAINER_NSENTER=1` integration. The
 first application starts the container's launcher service. UMU identifies that
 service by a hash of the canonical prefix path; later applications use
 `steam-runtime-launch-client` to enter the existing container with Proton's
@@ -44,7 +44,7 @@ and environment. A companion's custom working folder applies when it starts the
 container, but is not forwarded when joining an existing one. Tools that
 require their own working directory need additional launch-client integration.
 
-Runtime output goes only to each app's own Respawn+ launch log. Respawn+ does
+Runtime output goes only to each app's own Vessel launch log. Vessel does
 not enable `PROTON_LOG`: a companion joining the room inherits the game's
 environment, and Proton reopens `steam-<id>.log` for writing on every launch, so
 a trainer would truncate the game's log and destroy its crash output.
@@ -59,9 +59,9 @@ and each feature separately.
 ## Mod-manager behavior
 
 MO2 uses a virtual filesystem. Launch the modded game from inside MO2 when
-using its virtual mods. Respawn+'s separate direct Play action does not apply
+using its virtual mods. Vessel's separate direct Play action does not apply
 MO2's virtual deployment. Runtime prerequisites and manager compatibility
-remain specific to the tool; Respawn+ does not yet install MO2, runtimes, or
+remain specific to the tool; Vessel does not yet install MO2, runtimes, or
 mod packs automatically.
 
 The backend tests cover inherited prefixes/runners, literal arguments, custom
@@ -78,7 +78,7 @@ destinations, enables SkyUI in the prefix's plugin list, and sets a 1280×720
 window for debugging. It does not download or redistribute those mods.
 
 The backup manifest for the local validation is under
-`~/.local/share/respawn-plus/backups/skyrim-test-1792827196689/manifest.json`.
+`~/.local/share/vessel/backups/skyrim-test-1792827196689/manifest.json`.
 It records 68 deployed files/settings; original game executables were not changed.
 The original settings are available in that backup. Windowed mode is intentional,
 not an indication that Proton or SKSE failed.
@@ -88,7 +88,7 @@ Validated so far: vanilla Skyrim reaches the menu; the SKSE log reports version
 confirmed in the user's screenshot.
 
 Shared-session validation on 2026-10-24: launched the SKSE profile first and
-then the supplied FLiNG trainer through Respawn+. Skyrim reached its main menu
+then the supplied FLiNG trainer through Vessel. Skyrim reached its main menu
 and remained open alongside the trainer. The trainer displayed `SkyrimSE.exe`
 and Windows process ID **400**. Its launch log recorded
 `Re-entering container through bus 'com.steampowered.App…'`. Host processes
@@ -98,7 +98,7 @@ specific to that run. All trainer toggles were left disabled: process detection
 is verified, while cheat functionality for Skyrim 1.7.104 remains untested.
 
 Repeat the check by opening the SKSE profile, waiting for the game window, then
-opening the trainer. Check its process ID, inspect its Respawn+ launch log for
+opening the trainer. Check its process ID, inspect its Vessel launch log for
 the reentry message, and compare `/proc/<game-pid>/ns/mnt` with
 `/proc/<trainer-pid>/ns/mnt`. Opening two windows alone does not prove that they
 share a container or that the trainer detects the game.

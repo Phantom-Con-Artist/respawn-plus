@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: MIT */
-/* Respawn+ website. Direction: "One motif" — the voxel "+" from the launcher's logo is the only
+/* Vessel website. Direction: "One motif" — the voxel "+" from the launcher's logo is the only
    shape with character: the hero stage's notch, the button corner, image masks, list bullets and
    the block-built footer mark. Everything else is flat ground and ink. */
 
@@ -115,7 +115,7 @@ img, svg { display: block; max-width: 100%; }
 .voxel .cube { transform-box: fill-box; transform-origin: center; }
 .voxel.respawning .cube { animation: drop 900ms var(--ease) both; animation-delay: calc(var(--i) * 110ms); }
 @keyframes drop { 0% { opacity: 0; transform: translateY(-140%); } 55% { opacity: 1; } 75% { transform: translateY(6%); } 100% { opacity: 1; transform: none; } }
-.respawn-button { min-height: 40px; font-size: 15px; }
+.vessel-button { min-height: 40px; font-size: 15px; }
 
 /* ---------- Launcher fragments (data-ui): the product's own interface, at true size ---------- */
 [data-ui] { --ui-ground: #0c0d0f; --ui-surface: #15171a; --ui-raised: #24272b; --ui-rule: #1d2023; --ui-text: #f4f5f6; --ui-muted: #b4b4b4; --ui-faint: #949494; --ui-hue: #6fe3d4; font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; font-size: 15px; line-height: 21px; color: var(--ui-text); }

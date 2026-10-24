@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-//! Per-game display mode. Every game is shown through its room's private X screen, so Respawn+
+//! Per-game display mode. Every game is shown through its room's private X screen, so Vessel
 //! sets the mode on that screen instead of in any game's own settings files. This works the same
 //! for every game: the game picks its own render resolution and Proton scales its fullscreen
 //! output to the screen.

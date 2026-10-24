@@ -15,7 +15,7 @@ fn migrate(connection: &mut Connection) -> rusqlite::Result<()> {
     let version: u32 = transaction.query_row("PRAGMA user_version", [], |row| row.get(0))?;
     if version > 7 {
         return Err(rusqlite::Error::InvalidParameterName(
-            "Database is newer than this version of Respawn+".into(),
+            "Database is newer than this version of Vessel".into(),
         ));
     }
     if version == 0 {

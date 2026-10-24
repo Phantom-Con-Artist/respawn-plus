@@ -11,10 +11,10 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const game = JSON.parse(await readFile(join(root, 'test-games/mines.json'), 'utf8'));
 const data = process.env.XDG_DATA_HOME || join(homedir(), '.local/share');
 const state = process.env.XDG_STATE_HOME || join(homedir(), '.local/state');
-const installation = join(data, 'respawn-plus/test-games', game.id, game.version);
+const installation = join(data, 'vessel/test-games', game.id, game.version);
 const executable = join(installation, game.executable);
-const prefix = resolve(process.env.RESPAWN_TEST_PREFIX || join(data, 'respawn-plus/prefixes/mines-test'));
-const logs = join(state, 'respawn-plus/logs/mines');
+const prefix = resolve(process.env.VESSEL_TEST_PREFIX || join(data, 'vessel/prefixes/mines-test'));
+const logs = join(state, 'vessel/logs/mines');
 
 function verify(bytes) {
   if (bytes.length !== game.size_bytes || createHash('sha256').update(bytes).digest('hex') !== game.sha256) {
@@ -45,7 +45,7 @@ async function install() {
 }
 
 async function protonPath() {
-  const supplied = process.env.RESPAWN_PROTON_PATH;
+  const supplied = process.env.VESSEL_PROTON_PATH;
   const candidates = supplied ? [resolve(supplied)] : [
     join(data, 'Steam/compatibilitytools.d', game.tested_proton),
     join(homedir(), '.steam/root/compatibilitytools.d', game.tested_proton),
@@ -54,7 +54,7 @@ async function protonPath() {
   for (const directory of candidates) {
     try { await access(join(directory, 'proton')); return directory; } catch { /* Try next installed runner. */ }
   }
-  throw new Error(`No test Proton runner found. Set RESPAWN_PROTON_PATH to an installed Proton directory (tested: ${game.tested_proton}).`);
+  throw new Error(`No test Proton runner found. Set VESSEL_PROTON_PATH to an installed Proton directory (tested: ${game.tested_proton}).`);
 }
 
 async function play(args) {
@@ -66,7 +66,7 @@ async function play(args) {
   const log = createWriteStream(logfile, { flags: 'wx' });
   log.on('error', (error) => console.error(`Log write failed: ${error.message}`));
   const localUmu = join(homedir(), '.local/bin/umu-run');
-  let umu = process.env.RESPAWN_UMU_PATH;
+  let umu = process.env.VESSEL_UMU_PATH;
   if (!umu) {
     try { await access(localUmu); umu = localUmu; } catch { umu = 'umu-run'; }
   }
@@ -108,7 +108,7 @@ try {
     console.log(JSON.stringify({ ...game, installation, executable, prefix, logs, proton: await protonPath() }, null, 2));
   } else throw new Error('Usage: node scripts/test-game.mjs install|play|status [game arguments]');
 } catch (error) {
-  console.error(`Respawn+ test game: ${error.message}`);
+  console.error(`Vessel test game: ${error.message}`);
   console.error('Run npm run test-game:setup first; see docs/test-game.md for setup and runtime overrides.');
   process.exitCode = 1;
 }

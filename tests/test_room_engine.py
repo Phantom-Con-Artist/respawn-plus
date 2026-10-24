@@ -26,7 +26,7 @@ spec.loader.exec_module(engine)
 def make_package(root, name='example-runtime', version='1.0', provides=None, target='drive_c/runtime/example.bin'):
     root.mkdir(parents=True)
     (root / 'runtime.bin').write_bytes(b'shared runtime bytes')
-    (root / 'runtime.reg').write_text('Windows Registry Editor Version 5.00\n[HKEY_CURRENT_USER\\Software\\RespawnExample]\n"Ready"="yes"\n')
+    (root / 'runtime.reg').write_text('Windows Registry Editor Version 5.00\n[HKEY_CURRENT_USER\\Software\\VesselExample]\n"Ready"="yes"\n')
     manifest = {'schema':1, 'id':name, 'version':version, 'architecture':'any', 'provides':provides or ['example-runtime'], 'files':[{'source':'runtime.bin','target':target,'sha256':hashlib.sha256((root / 'runtime.bin').read_bytes()).hexdigest()}], 'registry':['runtime.reg']}
     (root / 'manifest.json').write_text(json.dumps(manifest))
     return manifest
@@ -34,7 +34,7 @@ def make_package(root, name='example-runtime', version='1.0', provides=None, tar
 
 class Packages(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory(prefix='respawn-packages-')
+        self.temp = tempfile.TemporaryDirectory(prefix='vessel-packages-')
         self.root = Path(self.temp.name)
         self.store = self.root / 'store'
         self.source = self.root / 'source'
@@ -93,7 +93,7 @@ class Packages(unittest.TestCase):
         composed = engine.compose({'prefix':str(prefix),'packages':[package],'store':str(self.store)})
         self.assertEqual((prefix / 'drive_c/runtime/example.bin').read_bytes(), b'')
         self.assertEqual(len(composed['mounts']), 2)
-        self.assertTrue(composed['registry'][0].startswith('Z:\\run\\respawn\\packages'))
+        self.assertTrue(composed['registry'][0].startswith('Z:\\run\\vessel\\packages'))
         (prefix / 'drive_c/runtime/example.bin').unlink()
         (prefix / 'drive_c/runtime/example.bin').symlink_to('/etc/passwd')
         original=Path('/etc/passwd').read_bytes()
@@ -145,7 +145,7 @@ class Packages(unittest.TestCase):
 class Sandbox(unittest.TestCase):
     def setUp(self):
         if not shutil.which('bwrap'): self.skipTest('bubblewrap not installed')
-        self.temp = tempfile.TemporaryDirectory(prefix='respawn-sandbox-')
+        self.temp = tempfile.TemporaryDirectory(prefix='vessel-sandbox-')
         self.root = Path(self.temp.name)
         self.processes = []
 
@@ -165,7 +165,7 @@ class Sandbox(unittest.TestCase):
         config = {'engine':str(ENGINE),'accounts':str(accounts),'guest_config':str(guest),'home':str(root/'home'),'guest_home':'/home/player','ipc':str(root/'ipc'),'prefix':str(root/'prefix'),'user':'player','writable_roots':[str(root/'prefix'),str(root/'game')],'read_only_roots':[],'runtime_mounts':mounts or [],'display':display,'graphics':False,'audio':False,'controllers':False,'network':network}
         if display != 'headless': config['wayland'] = str(Path(os.environ['XDG_RUNTIME_DIR']) / os.environ['WAYLAND_DISPLAY'])
         config_path = root / 'config.json'; config_path.write_text(json.dumps(config))
-        environment = dict(os.environ, RESPAWN_HOST_SECRET='never-inherit-this')
+        environment = dict(os.environ, VESSEL_HOST_SECRET='never-inherit-this')
         process = subprocess.Popen([sys.executable,'-I',str(ENGINE),'session',str(config_path)], env=environment, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
         self.processes.append(process)
         deadline = time.monotonic() + 20
@@ -192,7 +192,7 @@ try: p.write_bytes(b'bad'); writable=True
 except OSError: writable=False
 libc=ctypes.CDLL(None,use_errno=True)
 blocked=libc.syscall(250,0)==-1 and ctypes.get_errno()==errno.EPERM
-print(json.dumps({{'bytes':p.read_text(),'inode':p.stat().st_ino,'writable':writable,'secret':pathlib.Path({str(secret)!r}).exists(),'other_room':pathlib.Path({str(second/'prefix')!r}).exists(),'env_secret':os.environ.get('RESPAWN_HOST_SECRET'),'host_pid':pathlib.Path('/proc/{os.getpid()}').exists(),'network':os.readlink('/proc/self/ns/net'),'mount':os.readlink('/proc/self/ns/mnt'),'keyctl_blocked':blocked}}))'''
+print(json.dumps({{'bytes':p.read_text(),'inode':p.stat().st_ino,'writable':writable,'secret':pathlib.Path({str(secret)!r}).exists(),'other_room':pathlib.Path({str(second/'prefix')!r}).exists(),'env_secret':os.environ.get('VESSEL_HOST_SECRET'),'host_pid':pathlib.Path('/proc/{os.getpid()}').exists(),'network':os.readlink('/proc/self/ns/net'),'mount':os.readlink('/proc/self/ns/mnt'),'keyctl_blocked':blocked}}))'''
         a = json.loads(self.run_in(first, source)); b = json.loads(self.run_in(second, source))
         self.assertEqual(a['inode'], shared.stat().st_ino); self.assertEqual(a['inode'],b['inode'])
         self.assertFalse(a['writable']); self.assertFalse(a['secret']); self.assertFalse(a['other_room'])
@@ -229,7 +229,7 @@ print(json.dumps({{'bytes':p.read_text(),'inode':p.stat().st_ino,'writable':writ
             self.assertEqual(ids, [str(os.getuid()), str(os.getgid()), f'/run/user/{os.getuid()}'])
 
     def test_online_and_offline_rooms_cannot_connect_to_host_abstract_sockets(self):
-        address='\0respawn-host-only-'+str(os.getpid())
+        address='\0vessel-host-only-'+str(os.getpid())
         with socket.socket(socket.AF_UNIX) as server:
             server.bind(address); server.listen(1)
             for network in ['offline']+(['online'] if shutil.which('pasta') else []):
@@ -257,14 +257,14 @@ print(json.dumps({{'bytes':p.read_text(),'inode':p.stat().st_ino,'writable':writ
         self.run_in(root,"import os,pathlib,signal; [os.kill(int(p.name),signal.SIGTERM) for p in pathlib.Path('/proc').iterdir() if p.name.isdecimal() and (p/'comm').read_text().strip()=='Xwayland']")
         self.assertIsNotNone(self.processes[-1].wait(timeout=10))
 
-    @unittest.skipUnless(os.environ.get('RESPAWN_TEST_WINE') == '1', 'set RESPAWN_TEST_WINE=1 for real Wine smoke tests')
+    @unittest.skipUnless(os.environ.get('VESSEL_TEST_WINE') == '1', 'set VESSEL_TEST_WINE=1 for real Wine smoke tests')
     def test_real_wine_console_in_an_isolated_prefix(self):
         root = self.start('wine')
         wine = str(Path(shutil.which('wine')).resolve())
-        request = {'argv':[wine,'cmd.exe','/c','echo RESPAWN_WINE_OK'], 'cwd':str(root/'game'), 'env':{'WINEDEBUG':'-all'}}
+        request = {'argv':[wine,'cmd.exe','/c','echo VESSEL_WINE_OK'], 'cwd':str(root/'game'), 'env':{'WINEDEBUG':'-all'}}
         result = subprocess.run([sys.executable,'-I',str(ENGINE),'exec',str(root/'ipc/control.sock'),json.dumps(request)], capture_output=True, timeout=90)
         self.assertEqual(result.returncode,0,result.stdout.decode()+result.stderr.decode())
-        self.assertIn(b'RESPAWN_WINE_OK',result.stdout)
+        self.assertIn(b'VESSEL_WINE_OK',result.stdout)
 
 
 if __name__ == '__main__': unittest.main()

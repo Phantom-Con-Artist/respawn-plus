@@ -1,8 +1,8 @@
-# Respawn+ distribution
+# Vessel distribution
 
-Respawn+ uses one source repository and offers two installer editions. Both
+Vessel uses one source repository and offers two installer editions. Both
 editions produce an RPM and a Debian package and use the same app identifier,
-executable (`respawn-plus`), and data directory. They are alternative installations
+executable (`vessel`), and data directory. They are alternative installations
 of the same app; they are not intended to be installed side by side.
 
 | Edition | Game runtimes | Build command |
@@ -12,7 +12,7 @@ of the same app; they are not intended to be installed side by side.
 
 Lite does not depend on the distro's Wine/Proton packages. Its desktop system
 libraries (WebKitGTK/GTK etc.) are still normal RPM/DEB dependencies. Users can
-use installed runners, or set `RESPAWN_RUNTIME_DIRS` to colon-separated parent
+use installed runners, or set `VESSEL_RUNTIME_DIRS` to colon-separated parent
 directories containing custom Proton/Wine installations. A graphical runtime
 picker is part of future development.
 
@@ -24,7 +24,7 @@ one graphics-driver build portable across every Linux system.
 
 At release preparation time, select the newest upstream versions that pass our
 game/tool compatibility tests, then pin their exact versions and checksums for
-that Respawn+ release. Avoid floating `latest` inside a published installer or
+that Vessel release. Avoid floating `latest` inside a published installer or
 silently replacing an existing game's selected runner.
 
 Keep app source, build scripts, manifests, and packaging configuration in this
@@ -73,7 +73,7 @@ staging directory is missing or incomplete. It is a packaging integrity check,
 not an audit of source completeness or legal compliance.
 
 `packaging/tauri.full.conf.json` adds the validated staged bundle as application
-resources. Base configuration always includes Respawn+'s LICENSE, NOTICE, and
+resources. Base configuration always includes Vessel's LICENSE, NOTICE, and
 third-party notice policy. For a debug packaging check use:
 
 ```bash
@@ -96,11 +96,11 @@ integration and game testing are complete.
 
 ## License and publication
 
-Respawn+ original work is MIT. See LICENSE and THIRD_PARTY_NOTICES.md.
+Vessel original work is MIT. See LICENSE and THIRD_PARTY_NOTICES.md.
 Wine remains under its upstream LGPL terms, and Proton has multiple component
 licenses ([Wine LICENSE](https://github.com/wine-mirror/wine/blob/master/LICENSE),
 [Proton LICENSE](https://github.com/ValveSoftware/Proton/blob/proton_11.0/LICENSE)).
-Preserve the MIT copyright and permission notice when redistributing Respawn+.
+Preserve the MIT copyright and permission notice when redistributing Vessel.
 Distribute corresponding sources and other materials where required by bundled
 components' upstream licenses; do not relabel third-party software as MIT code.
 

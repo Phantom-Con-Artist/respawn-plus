@@ -2,6 +2,7 @@
 mod database;
 mod discovery;
 mod display;
+mod former_name;
 pub mod library;
 mod recovery;
 pub mod rooms;
@@ -217,11 +218,12 @@ async fn tool_log(
 }
 
 pub fn environment_status() -> Result<EnvironmentStatus, String> {
-    let base = dirs::data_dir()
-        .ok_or("Could not locate the platform data directory")?
-        .join("respawn-plus");
+    let data_root = dirs::data_dir().ok_or("Could not locate the platform data directory")?;
+    let state_root = dirs::state_dir().unwrap_or_else(|| data_root.clone());
+    former_name::adopt_library(&data_root, &state_root)?;
+    let base = data_root.join(former_name::NAME);
     std::fs::create_dir_all(&base).map_err(|e| e.to_string())?;
-    let path = base.join("respawn-plus.sqlite3");
+    let path = base.join(format!("{}.sqlite3", former_name::NAME));
     database::open(&path).map_err(|e| e.to_string())?;
     Ok(EnvironmentStatus {
         database_ready: true,
@@ -260,5 +262,5 @@ pub fn run() {
             tool_log
         ])
         .run(tauri::generate_context!())
-        .expect("error while running Respawn+");
+        .expect("error while running Vessel");
 }

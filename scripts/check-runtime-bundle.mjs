@@ -55,9 +55,9 @@ export async function validateRuntimeBundle(directory) {
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   try {
     const manifest = await validateRuntimeBundle(process.argv[2] ?? 'build/runtime-bundle');
-    console.log(`Respawn+ Full: verified ${manifest.components.length} runtime records and their binary/license/source checksums.`);
+    console.log(`Vessel Full: verified ${manifest.components.length} runtime records and their binary/license/source checksums.`);
   } catch (error) {
-    console.error(`Cannot build Respawn+ Full: ${error.message}`);
+    console.error(`Cannot build Vessel Full: ${error.message}`);
     console.error('Prepare build/runtime-bundle using docs/distribution.md, or build Lite with npm run bundle:lite.');
     process.exitCode = 1;
   }

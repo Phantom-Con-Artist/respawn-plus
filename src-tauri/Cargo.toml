@@ -1,13 +1,13 @@
 [package]
-name = "respawn-plus"
+name = "vessel"
 version = "0.1.0"
 description = "Linux launcher and modding environment for Windows games"
-authors = ["Respawn+ contributors"]
+authors = ["Vessel contributors"]
 license = "MIT"
 edition = "2021"
 
 [lib]
-name = "respawn_plus_lib"
+name = "vessel_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [features]

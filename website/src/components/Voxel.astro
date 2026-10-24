@@ -1,9 +1,9 @@
 ---
 // SPDX-License-Identifier: MIT
-// The Respawn+ "+": five cubes in the launcher logo's oblique projection (scripts/generate-brand.mjs),
+// The Vessel "+": five cubes in the launcher logo's oblique projection (scripts/generate-brand.mjs),
 // one <g> per cube so each can drop in on its own when the mark "respawns".
 interface Props { id?: string; label?: string; colours?: { top: string; front: string; side: string } }
-const { id, label = 'The Respawn+ mark: five cubes forming a plus', colours = { top: '#c9fbf3', front: '#6fe3d4', side: '#2a9d90' } } = Astro.props;
+const { id, label = 'The Vessel mark: five cubes forming a plus', colours = { top: '#c9fbf3', front: '#6fe3d4', side: '#2a9d90' } } = Astro.props;
 const S = 10, D = 0.42;
 const cells = [[1, 0], [0, 1], [1, 1], [2, 1], [1, 2]].sort((a, b) => a[1] - b[1] || a[0] - b[0]);
 const p = (x: number, y: number, z: number) => [(x + y * D) * S, (-z - y * D) * S];

@@ -1,8 +1,8 @@
-# Contributing to Respawn+
+# Contributing to Vessel
 
-Respawn+ is licensed under MIT. By submitting original contributions,
+Vessel is licensed under MIT. By submitting original contributions,
 you agree to distribute them under that same license. Retain upstream notices
-when adding third-party material; do not apply Respawn+'s copyright to it.
+when adding third-party material; do not apply Vessel's copyright to it.
 
 Start with the development and verification commands in README.md. Keep code,
 runtime manifests, and release documentation in this repository. Runtime binary

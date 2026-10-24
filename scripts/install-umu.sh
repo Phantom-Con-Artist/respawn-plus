@@ -6,7 +6,7 @@ set -euo pipefail
 version=1.4.4
 checksum=eb590691841f7fad3fc3ad8fd5db4ccb87849fe7948e62b28ece7a4ee48cc851
 data_directory="${XDG_DATA_HOME:-$HOME/.local/share}"
-destination="$data_directory/respawn-plus/tools/umu/$version"
+destination="$data_directory/vessel/tools/umu/$version"
 launcher="$HOME/.local/bin/umu-run"
 
 if [[ -e "$launcher" || -L "$launcher" ]]; then
@@ -17,7 +17,7 @@ if [[ -e "$launcher" || -L "$launcher" ]]; then
 fi
 
 if [[ ! -x "$destination/umu-run" ]]; then
-  archive="$(mktemp -t respawn-plus-umu.XXXXXXXX.tar)"
+  archive="$(mktemp -t vessel-umu.XXXXXXXX.tar)"
   trap 'rm -f -- "$archive"' EXIT
   curl --fail --location --proto '=https' --tlsv1.2 \
     "https://github.com/Open-Wine-Components/umu-launcher/releases/download/$version/umu-launcher-$version-zipapp.tar" \

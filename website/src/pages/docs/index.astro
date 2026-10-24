@@ -7,10 +7,10 @@ import { sortDocs, docBlurbs } from '../../docs';
 const docs = sortDocs(await getCollection('docs'));
 const entries = await Promise.all(docs.map(async (d) => ({ id: d.id, title: (await render(d)).headings.find((h) => h.depth === 1)?.text ?? d.id })));
 ---
-<Base title="Documentation — Respawn+" description="How to use Respawn+: your library, mod managers and trainers, display modes, packages and the verified environment." current="docs">
+<Base title="Documentation — Vessel" description="How to use Vessel: your library, mod managers and trainers, display modes, packages and the verified environment." current="docs">
   <header class="page-head">
     <h1>Documentation</h1>
-    <p>Written alongside the code and published from the same repository, so it describes what Respawn+ does today.</p>
+    <p>Written alongside the code and published from the same repository, so it describes what Vessel does today.</p>
   </header>
   <div class="band" aria-hidden="true"></div>
   <section class="downloads" aria-label="Guides">

@@ -2,11 +2,11 @@
 
 Checked on 2026-10-24 on Fedora 44 KDE, AMD Radeon Vega 8 (RADV).
 
-This is the historical setup report from before the rename to Respawn+. Paths,
+This is the historical setup report from before the rename to Vessel. Paths,
 artifact names, and marker text below record that original check. Those files
-are retained. New app state uses `~/.local/share/respawn-plus/respawn-plus.sqlite3`;
-the executable is now `respawn-plus`, packages are branded Respawn+, and custom
-runtime directories use `RESPAWN_RUNTIME_DIRS`. See [distribution](distribution.md)
+are retained. New app state uses `~/.local/share/vessel/vessel.sqlite3`;
+the executable is now `vessel`, packages are branded Vessel, and custom
+runtime directories use `VESSEL_RUNTIME_DIRS`. See [distribution](distribution.md)
 for the Full and Lite installer editions and current packaging scope.
 
 | Component | Version / state |

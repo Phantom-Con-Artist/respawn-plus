@@ -1,16 +1,16 @@
-<p align="center"><img src="public/brand/icon.svg" width="96" height="96" alt="Respawn+ logo: a voxel plus sign" /></p>
+<p align="center"><img src="public/brand/icon.svg" width="96" height="96" alt="Vessel logo: two slanted panels, cyan and deep teal" /></p>
 
-# Respawn+ Launcher
+# Vessel
 
 **Run, play and configure Windows games and their mods on Linux, the way you would on Windows.**
 
-Respawn+ is a general, open-source launcher. Each game gets its own Proton or Wine environment (a "room"), and any mod manager (Mod Organizer 2, Vortex or another), script extender or trainer (standalone, or apps like WeMod) can be added to it as a companion app and run alongside the game. They share one container, so they see the same files and the same Windows processes, just as on Windows.
+Vessel is a general, open-source launcher. Each game gets its own Proton or Wine environment (a "room"), and any mod manager (Mod Organizer 2, Vortex or another), script extender or trainer (standalone, or apps like WeMod) can be added to it as a companion app and run alongside the game. They share one container, so they see the same files and the same Windows processes, just as on Windows.
 
 **Status: v0.1.0 Beta, coming soon.** Builds from source today; Lite RPM and DEB packages arrive with v0.1.0. Licensed under **MIT**; see [LICENSE](LICENSE), [NOTICE](NOTICE) and [third-party notices](THIRD_PARTY_NOTICES.md). Website: `website/` (Cloudflare Pages project `respawnplus`).
 
 <p>
-  <img src="website/public/shots/playtime-dark.jpg" width="49%" alt="Respawn+ launcher: playtime over the last 14 days, dark theme" />
-  <img src="website/public/shots/sessions-dark.jpg" width="49%" alt="Respawn+ launcher: recent play sessions, dark theme" />
+  <img src="website/public/shots/playtime-dark.jpg" width="49%" alt="Vessel launcher: playtime over the last 14 days, dark theme" />
+  <img src="website/public/shots/sessions-dark.jpg" width="49%" alt="Vessel launcher: recent play sessions, dark theme" />
 </p>
 
 ## What it does today
@@ -18,11 +18,11 @@ Respawn+ is a general, open-source launcher. Each game gets its own Proton or Wi
 - **Finds your games.** Scans folders for Windows games or imports any `.exe`. Nothing is copied or changed.
 - **One room per game.** An isolated Wine prefix with Proton through [UMU](https://github.com/Open-Wine-Components/umu-launcher), plain Wine, or a runner you choose.
 - **Any mod manager, script extender or trainer.** Add it to a game as a companion app; it inherits the game's runner and prefix and joins the game's container while the game runs (UMU `UMU_CONTAINER_NSENTER`).
-- **Display modes.** Fullscreen, borderless or windowed at your resolution, for any game: Respawn+ sets the room's own screen and never edits the game's files.
+- **Display modes.** Fullscreen, borderless or windowed at your resolution, for any game: Vessel sets the room's own screen and never edits the game's files.
 - **Playtime and sessions.** Every session timed, daily totals for 14 days, last played. Launches through a script extender count as play.
 - **Launch logs.** A separate log per game and companion launch. Proton's shared log is not used, so a companion app can no longer overwrite the game's crash output.
 - **Room recovery.** Automatic setup checkpoints and restore with current mapped saves preserved, initially for Skyrim SE and Fallout 4. Btrfs snapshots where available, reflinks or copies elsewhere; see [support and limits](docs/room-recovery.md).
-- **Runtime discovery.** UMU, system Wine, native and Flatpak Steam Proton, Lutris Wine, and folders in `RESPAWN_RUNTIME_DIRS`.
+- **Runtime discovery.** UMU, system Wine, native and Flatpak Steam Proton, Lutris Wine, and folders in `VESSEL_RUNTIME_DIRS`.
 - **A desktop app.** Home dashboard, library with filters, a page per game, light and dark themes, built-in window controls. Your library is a local SQLite file.
 
 ## Modding: what is verified and what is next
@@ -36,7 +36,7 @@ Verified on Fedora with GE-Proton 11-11, UMU 1.4.4 and Skyrim Special Edition 1.
 
 Next: one-click setup helpers for common managers (see [the design](docs/superpowers/specs/2026-10-24-mod-manager-integration-design.md)).
 
-Compatibility varies by game and tool; Respawn+ says what was tested and does not promise universal Windows parity. Games and companions now run inside a shared bubblewrap room, with a private home, process namespace and display. See [room security and runtime support](docs/proton-rooms.md) for the current boundary and limitations.
+Compatibility varies by game and tool; Vessel says what was tested and does not promise universal Windows parity. Games and companions now run inside a shared bubblewrap room, with a private home, process namespace and display. See [room security and runtime support](docs/proton-rooms.md) for the current boundary and limitations.
 
 ## Repository layout
 
@@ -102,20 +102,20 @@ sudo dnf install wine winetricks mesa-vulkan-drivers.i686 vulkan-loader.i686
 vulkaninfo --summary
 ```
 
-For non-Steam games, use UMU with GE-Proton or UMU-Proton; Steam is not required. `npm run setup:runtime` installs the official UMU 1.4.4 zipapp with a pinned checksum under `~/.local/share/respawn-plus/tools/umu/1.4.4`, linked from `~/.local/bin/umu-run` (Python 3.10+; existing installations are kept). No third-party binaries are checked into this repository.
+For non-Steam games, use UMU with GE-Proton or UMU-Proton; Steam is not required. `npm run setup:runtime` installs the official UMU 1.4.4 zipapp with a pinned checksum under `~/.local/share/vessel/tools/umu/1.4.4`, linked from `~/.local/bin/umu-run` (Python 3.10+; existing installations are kept). No third-party binaries are checked into this repository.
 
 UMU downloads Proton and the Steam Linux Runtime on first run. To initialise a test prefix without starting a game:
 
 ```bash
-WINEPREFIX="$HOME/.local/share/respawn-plus/prefixes/runtime-check" \
+WINEPREFIX="$HOME/.local/share/vessel/prefixes/runtime-check" \
   GAMEID=0 PROTONPATH=GE-Proton umu-run cmd.exe /c 'exit 0'
 ```
 
 ## Data locations
 
-- Library: `$XDG_DATA_HOME/respawn-plus/respawn-plus.sqlite3` (normally `~/.local/share/respawn-plus/`), schema v5.
-- Prefixes: `~/.local/share/respawn-plus/prefixes/game-<id>`.
-- Launch logs: `~/.local/state/respawn-plus/logs/library/`.
+- Library: `$XDG_DATA_HOME/vessel/vessel.sqlite3` (normally `~/.local/share/vessel/`), schema v5.
+- Prefixes: `~/.local/share/vessel/prefixes/game-<id>`.
+- Launch logs: `~/.local/state/vessel/logs/library/`.
 
 ## Documentation
 

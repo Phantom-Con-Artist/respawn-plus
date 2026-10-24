@@ -7,7 +7,7 @@ fn main() {
         .iter()
         .any(|arg| arg == "--list-games" || arg == "--scan-games")
     {
-        let result = respawn_plus_lib::library::Launcher::new().and_then(|service| {
+        let result = vessel_lib::library::Launcher::new().and_then(|service| {
             if args.iter().any(|arg| arg == "--scan-games") {
                 let report = service.scan(None)?;
                 eprintln!(
@@ -25,7 +25,7 @@ fn main() {
             }
         }
     } else if args.iter().any(|arg| arg == "--diagnose") {
-        match respawn_plus_lib::environment_status() {
+        match vessel_lib::environment_status() {
             Ok(status) => println!("{}", serde_json::to_string_pretty(&status).unwrap()),
             Err(error) => {
                 eprintln!("{error}");
@@ -33,6 +33,6 @@ fn main() {
             }
         }
     } else {
-        respawn_plus_lib::run();
+        vessel_lib::run();
     }
 }

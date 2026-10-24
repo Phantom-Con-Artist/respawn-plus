@@ -1,56 +1,59 @@
 // SPDX-License-Identifier: MIT
-// Generates the Respawn+ voxel mark: five cubes forming an upright "+", drawn in an oblique
-// projection so the front faces stay square and the plus reads as a plus, not an "x".
-// Usage: node scripts/generate-brand.mjs  → writes public/brand/*.svg and src/brand.js
+// Generates the Vessel mark: two rounded slanted panels, cyan and deep teal, whose inner edges
+// step past each other like the two halves of a hull. Traced from the master artwork
+// (vessel-logo.png, 1254 px) as polygons with rounded corners, so every size stays crisp.
+// Usage: node scripts/generate-brand.mjs  → writes public/brand/*.svg, website/public/*.svg, src/brand.js
 import { mkdirSync, writeFileSync } from 'node:fs';
 
-const S = 10; // cube edge in SVG units
-const D = 0.42; // depth offset per unit, up and to the right
-const CELLS = [[1, 0], [0, 1], [1, 1], [2, 1], [1, 2]]; // [x, z] on the front plane
+const CYAN = '#18e6e4';
+const TEAL = '#0b1c1f';
+const TEAL_ON_DARK = '#2f6f74'; // the deep half stays visible on dark backgrounds
 
-function project(x, y, z) {
-  return [(x + y * D) * S, (-z - y * D) * S];
-}
-function face(points) {
-  return 'M' + points.map(([x, y]) => x.toFixed(2) + ' ' + y.toFixed(2)).join('L') + 'Z';
-}
-function cube(x, z) {
-  const p = (dx, dy, dz) => project(x + dx, dy, z + dz);
-  return {
-    left: face([p(0, 0, 0), p(1, 0, 0), p(1, 0, 1), p(0, 0, 1)]), // front
-    top: face([p(0, 0, 1), p(1, 0, 1), p(1, 1, 1), p(0, 1, 1)]),
-    right: face([p(1, 0, 0), p(1, 1, 0), p(1, 1, 1), p(1, 0, 1)]),
-  };
-}
+// Corners in the master's pixel space, clockwise, with a rounding radius for each.
+const LEFT = [[160, 140, 46], [603, 440, 40], [603, 742, 46], [664, 852, 46], [664, 1170, 40], [160, 832, 46]];
+const RIGHT = [[1096, 176, 40], [1096, 882, 46], [754, 1100, 40], [754, 806, 46], [657, 646, 46], [657, 458, 40]];
 
-// Painter's order: lower rows first, then left to right, so upper/right cubes cover hidden faces.
-const cubes = CELLS.slice().sort((a, b) => a[1] - b[1] || a[0] - b[0]).map(([x, z]) => cube(x, z));
-const xs = [], ys = [];
-for (const [x, z] of CELLS) for (const [dx, dz] of [[0, 0], [1, 0], [0, 1], [1, 1]]) for (const y of [0, 1]) {
-  const [px, py] = project(x + dx, y, z + dz); xs.push(px); ys.push(py);
-}
-const pad = 1;
-const box = [Math.min(...xs) - pad, Math.min(...ys) - pad, Math.max(...xs) - Math.min(...xs) + pad * 2, Math.max(...ys) - Math.min(...ys) + pad * 2]
-  .map((n) => n.toFixed(2)).join(' ');
-
-function paths(fills) {
-  // A stroke in the face's own colour closes anti-aliasing seams between neighbouring cubes.
-  return cubes.map((c) => ['top', 'left', 'right'].map((k) =>
-    `<path d="${c[k]}" fill="${fills[k]}" stroke="${fills[k]}" stroke-width="0.35" stroke-linejoin="round"/>`).join('')).join('');
+const n = (v) => +v.toFixed(1);
+function rounded(points) {
+  const at = (i) => points[(i + points.length) % points.length];
+  let d = '';
+  points.forEach(([x, y, r], i) => {
+    const [px, py] = at(i - 1), [nx, ny] = at(i + 1);
+    const toward = (tx, ty) => {
+      const len = Math.hypot(tx - x, ty - y), k = Math.min(r, len / 2) / len;
+      return [x + (tx - x) * k, y + (ty - y) * k];
+    };
+    const [ax, ay] = toward(px, py), [bx, by] = toward(nx, ny);
+    d += `${i ? 'L' : 'M'}${n(ax)} ${n(ay)}Q${x} ${y} ${n(bx)} ${n(by)}`;
+  });
+  return d + 'Z';
 }
 
-// Inline mark themed through CSS custom properties.
-const themed = `<svg class="voxel-mark" viewBox="${box}" aria-hidden="true" focusable="false">${paths({ top: 'var(--vox-top)', left: 'var(--vox-left)', right: 'var(--vox-right)' })}</svg>`;
-const fixed = { top: '#c9fbf3', left: '#6fe3d4', right: '#2a9d90' };
+const all = [...LEFT, ...RIGHT];
+const pad = 24;
+const minX = Math.min(...all.map((p) => p[0])) - pad, minY = Math.min(...all.map((p) => p[1])) - pad;
+const w = Math.max(...all.map((p) => p[0])) + pad - minX, h = Math.max(...all.map((p) => p[1])) + pad - minY;
+const side = Math.max(w, h);
+const box = [minX - (side - w) / 2, minY - (side - h) / 2, side, side].map(n).join(' ');
+const panels = (left, right) => `<path d="${rounded(LEFT)}" fill="${left}"/><path d="${rounded(RIGHT)}" fill="${right}"/>`;
+
+// The mark alone, transparent, in its master colours (for light backgrounds).
+const mark = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${box}">${panels(CYAN, TEAL)}</svg>\n`;
+// The same mark for any theme: the deep half lightens when the system or page is dark.
+const favicon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${box}"><style>.deep{fill:${TEAL}}@media (prefers-color-scheme:dark){.deep{fill:${TEAL_ON_DARK}}}</style>` +
+  `<path d="${rounded(LEFT)}" fill="${CYAN}"/><path class="deep" d="${rounded(RIGHT)}"/></svg>\n`;
+// App icon: the mark on a light rounded tile, readable on light and dark panels and menus.
+const [bx, by, bs] = box.split(' ').map(Number);
+const tile = bs * 1.18, tx = bx - (tile - bs) / 2, ty = by - (tile - bs) / 2;
+const icon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${n(tx)} ${n(ty)} ${n(tile)} ${n(tile)}">` +
+  `<rect x="${n(tx)}" y="${n(ty)}" width="${n(tile)}" height="${n(tile)}" rx="${n(tile * 0.22)}" fill="#f1f5f5"/>${panels(CYAN, TEAL)}</svg>\n`;
+// Inline mark for the launcher, themed through CSS custom properties.
+const themed = `<svg class="app-icon" viewBox="${box}" aria-hidden="true" focusable="false">${panels('var(--mark-light)', 'var(--mark-deep)')}</svg>`;
 
 mkdirSync('public/brand', { recursive: true });
-writeFileSync('public/brand/mark.svg', `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${box}">${paths(fixed)}</svg>\n`);
-const [bx, by, bw, bh] = box.split(' ').map(Number);
-const size = Math.max(bw, bh) * 1.7;
-const cx = bx + bw / 2, cy = by + bh / 2;
-const icon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${(cx - size / 2).toFixed(2)} ${(cy - size / 2).toFixed(2)} ${size.toFixed(2)} ${size.toFixed(2)}">` +
-  `<rect x="${(cx - size / 2).toFixed(2)}" y="${(cy - size / 2).toFixed(2)}" width="${size.toFixed(2)}" height="${size.toFixed(2)}" rx="${(size * 0.16).toFixed(2)}" fill="#121315"/>` +
-  `<g transform="translate(${cx.toFixed(2)} ${(cy + 1).toFixed(2)}) scale(1.08) translate(${(-cx).toFixed(2)} ${(-cy).toFixed(2)})">${paths(fixed)}</g></svg>\n`;
+writeFileSync('public/brand/mark.svg', mark);
 writeFileSync('public/brand/icon.svg', icon);
-writeFileSync('src/brand.js', '// SPDX-License-Identifier: MIT\n// Generated by scripts/generate-brand.mjs — do not edit.\nexport const voxelMark = ' + JSON.stringify(themed) + ';\nexport const appIcon = ' + JSON.stringify(icon.trim().replace('<svg ', '<svg class="app-icon" aria-hidden="true" focusable="false" ')) + ';\n');
+writeFileSync('website/public/mark.svg', mark);
+writeFileSync('website/public/favicon.svg', favicon);
+writeFileSync('src/brand.js', '// SPDX-License-Identifier: MIT\n// Generated by scripts/generate-brand.mjs — do not edit.\nexport const appIcon = ' + JSON.stringify(themed) + ';\n');
 console.log('viewBox', box);

@@ -6,13 +6,13 @@ import Voxel from '../components/Voxel.astro';
 const repo = 'https://github.com/Phantom-Con-Artist/respawn-plus';
 // Facts below come from real runs on the developer's machine (see docs/companion-apps.md).
 const tested = [
-  { name: 'Skyrim Special Edition', fact: 'Version 1.7.104 reached the menu and a new game under GE-Proton 11, in fullscreen set from Respawn+.', kind: 'Game', detail: 'SkyrimSE.exe', state: 'Running' },
+  { name: 'Skyrim Special Edition', fact: 'Version 1.7.104 reached the menu and a new game under GE-Proton 11, in fullscreen set from Vessel.', kind: 'Game', detail: 'SkyrimSE.exe', state: 'Running' },
   { name: 'SKSE64', fact: 'Script extender 2.3.1 started the game and loaded SkyUI; its in-game menu appeared.', kind: 'Script extender', detail: 'skse64_loader.exe', state: 'Running' },
   { name: 'Mod Organizer 2', fact: 'Version 2.5.2 opened under Proton, its virtual files worked, and its Run button started Skyrim.', kind: 'Mod manager', detail: 'ModOrganizer.exe', state: 'Ready' },
   { name: 'A trainer', fact: 'A standalone trainer joined the game’s room and found SkyrimSE.exe as process 400; all ten of its options ran without a crash. Trainer apps like WeMod are added the same way.', kind: 'Trainer', detail: 'Any trainer .exe', state: 'Running' },
 ];
 ---
-<Base title="Respawn+ — Windows games, at home on Linux" description="Respawn+ runs, plays and configures Windows games and their mods on Linux, the way you would on Windows. Any mod manager, script extender or trainer runs alongside the game. Coming soon as v0.1.0 Beta." current="home">
+<Base title="Vessel — Windows games, at home on Linux" description="Vessel runs, plays and configures Windows games and their mods on Linux, the way you would on Windows. Any mod manager, script extender or trainer runs alongside the game. Coming soon as v0.1.0 Beta." current="home">
   <section class="hero" aria-labelledby="hero-title">
     <div class="hero-copy reveal">
       <h1 id="hero-title">Windows games, at home on Linux.</h1>
@@ -21,7 +21,7 @@ const tested = [
     </div>
     <div class="stage shutter">
       <div class="stage-inner">
-        <div class="ui-window" data-ui aria-label="The Respawn+ launcher showing a game running with its script extender, trainer and mod manager">
+        <div class="ui-window" data-ui aria-label="The Vessel launcher showing a game running with its script extender, trainer and mod manager">
           <div class="ui-row"><div><div class="ui-title">Skyrim Special Edition</div><div class="ui-muted">Windows game · Proton · GE-Proton11-11</div></div><span class="ui-pill">Running</span></div>
           <div class="ui-card" style="margin-top:16px">
             <div class="ui-row" style="margin-bottom:6px"><strong>In this room</strong><span class="ui-muted ui-small">One shared container</span></div>
@@ -35,7 +35,7 @@ const tested = [
         </div>
         <div class="voxel-stage">
           <Voxel id="hero-voxel" colours={{ top: '#f4fffd', front: '#0c0d0f', side: '#2a9d90' }} />
-          <button class="button respawn-button" id="respawn" type="button">Respawn</button>
+          <button class="button vessel-button" id="respawn" type="button">Respawn</button>
         </div>
       </div>
     </div>
@@ -58,7 +58,7 @@ const tested = [
         </ul>
       </div>
       <div class="side after">
-        <h3>With Respawn+</h3>
+        <h3>With Vessel</h3>
         <ul>
           <li>Each game gets its own prefix and runner automatically.</li>
           <li>Trainers join the game’s container and find it: process 400, found.</li>
@@ -126,7 +126,7 @@ const tested = [
 
   <section class="screens" aria-labelledby="screens-title">
     <div class="screens-head reveal"><h2 id="screens-title">Real screens from the Beta</h2><p>Playtime is counted per day from every session, including the ones a script extender starts. Light and dark themes follow your desktop.</p></div>
-    <figure class="shot wide reveal"><img class="notch" src="/shots/game-sessions-dark.jpg" width="1087" height="395" alt="A game's session list in the Respawn+ launcher, dark theme: six sessions with their dates and lengths" loading="lazy" /><figcaption>Every session of one game, with the companion app that started it.</figcaption></figure>
+    <figure class="shot wide reveal"><img class="notch" src="/shots/game-sessions-dark.jpg" width="1087" height="395" alt="A game's session list in the Vessel launcher, dark theme: six sessions with their dates and lengths" loading="lazy" /><figcaption>Every session of one game, with the companion app that started it.</figcaption></figure>
     <figure class="shot left reveal"><img class="notch" src="/shots/playtime-light.jpg" width="536" height="315" alt="The playtime chart for the last 14 days, light theme, with today's bar in teal" loading="lazy" /><figcaption>The last 14 days, today in teal.</figcaption></figure>
     <figure class="shot right reveal"><img class="notch" src="/shots/sessions-dark.jpg" width="536" height="433" alt="The recent sessions list on the launcher's home screen, dark theme" loading="lazy" /><figcaption>Recent sessions on the home screen; a dash marks a session whose length was not recorded.</figcaption></figure>
   </section>
@@ -160,7 +160,7 @@ const tested = [
     <p class="cta-line" style="font-size:clamp(32px, 5.6vw, 88px);line-height:1.08;font-weight:600;letter-spacing:-0.03em">
       I play on <button class="blank" id="distro" type="button" aria-label="Your Linux distribution: Fedora. Press to change.">Fedora</button>,<br />tell me when it <a class="word" href={`${repo}/releases`}>respawns</a>.
     </p>
-    <p class="after" id="distro-note">Opens the project’s releases on GitHub; choose Watch, then Releases, to hear when v0.1.0 lands. Fedora is where Respawn+ is tested first, as an RPM package.</p>
+    <p class="after" id="distro-note">Opens the project’s releases on GitHub; choose Watch, then Releases, to hear when v0.1.0 lands. Fedora is where Vessel is tested first, as an RPM package.</p>
   </section>
 
   <script>
@@ -191,7 +191,7 @@ const tested = [
     });
     // The blank in the closing sentence: which package each distribution will get.
     const notes = {
-      Fedora: 'Fedora is where Respawn+ is tested first, as an RPM package.',
+      Fedora: 'Fedora is where Vessel is tested first, as an RPM package.',
       Ubuntu: 'Ubuntu gets a DEB package with v0.1.0.',
       Debian: 'Debian gets a DEB package with v0.1.0.',
       Arch: 'On Arch, build from source for now; the steps are in the docs.',

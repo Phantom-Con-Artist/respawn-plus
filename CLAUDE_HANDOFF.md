@@ -1,4 +1,4 @@
-# Respawn+ — Claude takeover handshake
+# Vessel — Claude takeover handshake
 
 ## Latest update — 2026-10-24: rooms, shared Windows dependencies and rollback
 
@@ -45,7 +45,7 @@ Read `docs/proton-rooms.md` and `docs/room-recovery.md` for contracts and limits
   private-home/policy rollback, aliases between room roots, original-file
   independence, seven simulated crash positions across three root switches,
   archive/history retention, orphan Wine processes and exclusive-library locking.
-- 13 Python room-engine tests passed with `RESPAWN_TEST_WINE=1`: real namespaces,
+- 13 Python room-engine tests passed with `VESSEL_TEST_WINE=1`: real namespaces,
   shared read-only inode identity, hidden host files/environment/processes,
   isolated online/offline abstract Unix sockets, private Xwayland, real Wine
   console startup, spoofed host control sockets, malformed packages/PE data,
@@ -109,7 +109,7 @@ Commands:
 ```sh
 cargo test --manifest-path src-tauri/Cargo.toml --lib --offline
 cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --offline -- -D warnings
-RESPAWN_TEST_WINE=1 npm run test:rooms
+VESSEL_TEST_WINE=1 npm run test:rooms
 npm run check && npm run build && npm run test:packaging
 cargo run --manifest-path src-tauri/Cargo.toml --example room_lab -- NEW_LAB GAME_EXE proton PROTON_SCRIPT
 ```
@@ -138,13 +138,13 @@ No credentials are included here; none are needed to read or develop the repo.
 
 ## User intent and accepted decisions
 
-- Build **Respawn+**, an open-source Linux launcher that simplifies Windows
+- Build **Vessel**, an open-source Linux launcher that simplifies Windows
   gaming, mod managers, script extenders, and trainers.
 - The project license is **MIT**, superseding the earlier AGPL request.
   Third-party software retains its own licenses.
 - Stack: Rust + Tauri v2, SQLite, Vite with a vanilla JavaScript frontend.
 - Library: artwork/name cards in a bento-style grid, discovery/import, and
-  launching games directly from Respawn+.
+  launching games directly from Vessel.
 - Companion apps belong to a game and share its selected runner and prefix.
 - Distribution direction: lite installers using users' own resources, plus
   fuller RPM/DEB editions with properly licensed runtime dependencies.
@@ -152,7 +152,7 @@ No credentials are included here; none are needed to read or develop the repo.
 - The latest implementation request was to provide a shared “room” in which
   Skyrim and its trainer can run concurrently and discover each other.
 
-The user discussed Linux seeing only Respawn+'s PID. Be precise: the current
+The user discussed Linux seeing only Vessel's PID. Be precise: the current
 implementation does **not** hide processes, fake PIDs, or create a private PID
 namespace. Linux sees separate host processes. Shared runtime/container state
 solves the demonstrated concurrency issue without PID aliasing.
@@ -218,13 +218,13 @@ through the same backend.
 Local evidence, available at handoff but temporary:
 
 ```text
-/tmp/respawn-shared-room-skyrim.png
-/tmp/respawn-shared-room-trainer.png
-~/.local/state/respawn-plus/logs/library/game-2/tool-2/launch-1792828843334469089.log
-~/.local/state/respawn-plus/logs/library/game-2/tool-3/launch-1792828871480190044.log
+/tmp/vessel-shared-room-skyrim.png
+/tmp/vessel-shared-room-trainer.png
+~/.local/state/vessel/logs/library/game-2/tool-2/launch-1792828843334469089.log
+~/.local/state/vessel/logs/library/game-2/tool-3/launch-1792828871480190044.log
 ```
 
-**State rechecked while preparing this handoff:** no matching Respawn+, Skyrim,
+**State rechecked while preparing this handoff:** no matching Vessel, Skyrim,
 trainer, or test launcher-service process was found. The last launch rows
 9 (SKSE, recorded supervisor PID 78929) and 10 (trainer, supervisor PID 79344)
 still contained `running`. Those rows are stale, not proof of current activity.
@@ -247,7 +247,7 @@ npm run test:packaging
 npm run bundle:lite -- --debug --no-bundle
 ```
 
-The built executable is `src-tauri/target/debug/respawn-plus`.
+The built executable is `src-tauri/target/debug/vessel`.
 Use the `custom-protocol` feature for standalone builds; the package script
 already supplies it. A plain debug build without that feature may use Vite's
 development URL instead of embedded frontend assets.
@@ -264,7 +264,7 @@ development URL instead of embedded frontend assets.
    second UMU process does not forward that directory into the existing room.
    Additional direct launch-client integration should pass `--directory`.
 3. **Environment/log inheritance:** the joined app inherits the first app's
-   environment, including `PROTON_LOG_DIR`. Respawn+ has separate launch logs,
+   environment, including `PROTON_LOG_DIR`. Vessel has separate launch logs,
    but Proton's own verbose logs can go to the first application's directory.
 4. **Session lifetime/status:** this uses the runtime's application session;
    there is no independent room kept alive with zero apps. Launch status tracks
@@ -273,7 +273,7 @@ development URL instead of embedded frontend assets.
    game/tool lifecycle semantics.
 5. **MO2 is unverified:** do not claim it was installed or successfully tested.
    MO2 virtual mods require launching the game through MO2's virtual filesystem;
-   Respawn+'s direct Play does not apply that virtual deployment.
+   Vessel's direct Play does not apply that virtual deployment.
 6. **Security/resources:** the current Wine/runtime setup is not isolation for
    untrusted trainers. No new filesystem restrictions or cgroup controls were
    implemented. No universal “any Windows game” compatibility claim is proven.
@@ -298,16 +298,16 @@ Already present before this focused shared-session change:
 ## Local paths and profile identities
 
 ```text
-SQLite: ~/.local/share/respawn-plus/respawn-plus.sqlite3
+SQLite: ~/.local/share/vessel/vessel.sqlite3
 Game 1: Mines
 Game 2: Skyrim Special Edition
 Tool 2: Skyrim via SKSE64 (script_extender, game 2)
 Tool 3: FLiNG Trainer (compatibility test) (trainer, game 2)
 Tool 1: temporary Notepad check; previously removed
-Game 2 prefix: ~/.local/share/respawn-plus/prefixes/game-2
+Game 2 prefix: ~/.local/share/vessel/prefixes/game-2
 Effective Wine prefix seen in Proton children: game-2/pfx/
-Logs: ~/.local/state/respawn-plus/logs/library/
-Backups: ~/.local/share/respawn-plus/backups/skyrim-test-1792827196689/manifest.json
+Logs: ~/.local/state/vessel/logs/library/
+Backups: ~/.local/share/vessel/backups/skyrim-test-1792827196689/manifest.json
 ```
 
 The backup manifest records 68 deployed files/settings. Original game
@@ -329,7 +329,7 @@ Runtime: ~/.local/share/umu/steamrt4
 ```
 
 The old `gameforge` UMU directory is intentional retained local installation
-state; do not rename it blindly. The installer script targets Respawn+ paths
+state; do not rename it blindly. The installer script targets Vessel paths
 for new installations and preserves existing installations.
 
 ## Development and inspection entry points
@@ -343,8 +343,8 @@ for new installations and preserves existing installations.
   `tests/runtime-bundle.test.mjs`, `packaging/`.
 
 ```bash
-src-tauri/target/debug/respawn-plus --diagnose
-src-tauri/target/debug/respawn-plus --list-games
+src-tauri/target/debug/vessel --diagnose
+src-tauri/target/debug/vessel --list-games
 # --list-games performs launch-state reconciliation; it is not strictly read-only.
 npm run dev
 npm run tauri -- dev

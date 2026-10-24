@@ -867,8 +867,8 @@ impl Launcher {
         let mut switches = Vec::new();
         for (index, root) in manifest.roots.iter().enumerate() {
             let parent = root.live.parent().ok_or("Invalid checkpoint path")?;
-            let stage = parent.join(format!(".respawn-stage-{game_id}-{undo}-{index}"));
-            let previous = parent.join(format!(".respawn-previous-{game_id}-{undo}-{index}"));
+            let stage = parent.join(format!(".vessel-stage-{game_id}-{undo}-{index}"));
+            let previous = parent.join(format!(".vessel-previous-{game_id}-{undo}-{index}"));
             if exists(&previous) {
                 return Err("Restore backup path already exists".into());
             }
@@ -961,7 +961,7 @@ impl Launcher {
             let valid_name = |path: &Path, kind: &str| {
                 path.file_name()
                     .and_then(|name| name.to_str())
-                    .is_some_and(|name| name.starts_with(&format!(".respawn-{kind}-{game_id}-")))
+                    .is_some_and(|name| name.starts_with(&format!(".vessel-{kind}-{game_id}-")))
             };
             if switch.live != root.live
                 || !root.live.is_absolute()
@@ -1287,12 +1287,12 @@ mod tests {
             let mut switches = Vec::new();
             for (i, root) in manifest.roots.iter().enumerate() {
                 let parent = root.live.parent().unwrap();
-                let stage = parent.join(format!(".respawn-stage-{}-test-{i}", game.id));
+                let stage = parent.join(format!(".vessel-stage-{}-test-{i}", game.id));
                 clone_tree(&root.image, &stage, false).unwrap();
                 switches.push(Switch {
                     live: root.live.clone(),
                     stage,
-                    previous: parent.join(format!(".respawn-previous-{}-test-{i}", game.id)),
+                    previous: parent.join(format!(".vessel-previous-{}-test-{i}", game.id)),
                 });
             }
             db.execute(

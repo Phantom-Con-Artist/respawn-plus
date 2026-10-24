@@ -2,16 +2,16 @@
 //! Disposable real-game smoke/corruption/recovery lab. Never imports the original game.
 //! cargo run --example room_lab -- <new-lab-directory> <game.exe> <wine|proton> <runner>
 use base64::Engine;
-use respawn_plus_lib::{
-    library::{GameSettings, Launcher},
-    rooms::RoomProfile,
-};
 use serde_json::json;
 use std::{
     fs,
     path::{Path, PathBuf},
     process::Command,
     time::{Duration, Instant},
+};
+use vessel_lib::{
+    library::{GameSettings, Launcher},
+    rooms::RoomProfile,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -26,7 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     fs::create_dir_all(&base)?;
     let base = base.canonicalize()?;
     fs::write(
-        base.join("RESPAWN-DISPOSABLE-LAB"),
+        base.join("VESSEL-DISPOSABLE-LAB"),
         "Only disposable copies are modified by this test.\n",
     )?;
     let source = Path::new(&args[1]).canonicalize()?;

@@ -1,11 +1,11 @@
 # Mod manager integration — design
 
-Status: approved for planning, 2026-10-24. Generalised the same day: Respawn+ integrates
+Status: approved for planning, 2026-10-24. Generalised the same day: Vessel integrates
 mod managers in general (Mod Organizer 2, Vortex and others), not MO2 alone.
 
 ## Scope: any mod manager, through adapters
 
-Respawn+ is a general launcher to run, play and configure Windows games and their mods the way
+Vessel is a general launcher to run, play and configure Windows games and their mods the way
 players do on Windows. Any mod manager, script extender or trainer can already be added to a game
 as a companion app (any Windows executable). This design adds *guided* integration on top:
 
@@ -26,11 +26,11 @@ its spike.
 ## Goal
 
 Manage Skyrim SE mods in Mod Organizer 2 and play the modded game from
-Respawn+. Mods are applied through MO2's virtual filesystem (USVFS); the game
+Vessel. Mods are applied through MO2's virtual filesystem (USVFS); the game
 folder is not modified. MO2 runs in the game's prefix and shared UMU room, so
 companions such as the trainer keep working alongside it.
 
-Done means: Play in Respawn+ with "Launch through MO2" on starts MO2 → SKSE →
+Done means: Play in Vessel with "Launch through MO2" on starts MO2 → SKSE →
 Skyrim, and a mod installed only in MO2 (SkyUI) loads in game.
 
 Out of scope: Nexus login, automatic mod downloads, games other than Skyrim SE.
@@ -50,7 +50,7 @@ MO2 2.5.2 (Nexus installer, SHA-256
 installed silently (`/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /NOICONS /DIR=`)
 inside game 2's room under GE-Proton 11-11 / UMU 1.4.4 / steamrt4.
 
-- A portable instance with a probe mod made `Data\RespawnProbe\hello.txt`
+- A portable instance with a probe mod made `Data\VesselProbe\hello.txt`
   visible to `cmd.exe` launched through MO2, while the real Data folder had no
   such file. USVFS works under Proton.
 - `moshortcut://:SKSE` started SKSE 2.3.1 and Skyrim 1.7.104 to the main menu;
@@ -78,7 +78,7 @@ launch directory and is not stable.
 
 - **Install MO2:** download the official `Mod.Organizer-2.5.2.exe` GitHub
   release asset, verify a pinned SHA-256 (reject any mismatch), run it silently
-  in the game's room into `~/.local/share/respawn-plus/tools/mo2/2.5.2/`.
+  in the game's room into `~/.local/share/vessel/tools/mo2/2.5.2/`.
   Before pinning, confirm the GitHub asset hash equals the Nexus hash above.
 - **Use existing MO2:** pick a folder containing `ModOrganizer.exe`, or an MO2
   installer, which is installed the same way.
@@ -87,9 +87,9 @@ launch directory and is not stable.
 
 - A global MO2 instance in the game's prefix
   (`AppData\Local\ModOrganizer\<instance>`), with `base_directory` pointing to
-  `~/.local/share/respawn-plus/mods/game-<id>/` so mods, downloads and profiles
+  `~/.local/share/vessel/mods/game-<id>/` so mods, downloads and profiles
   survive a prefix rebuild.
-- Respawn+ writes `ModOrganizer.ini`: game name, path, edition, the dialog
+- Vessel writes `ModOrganizer.ini`: game name, path, edition, the dialog
   answers above, a `Default` profile, and an `SKSE` executable when
   `skse64_loader.exe` exists.
 - Launch with `moshortcut://<instance>:SKSE`.
@@ -115,7 +115,7 @@ game**, **Open MO2**, and the **Launch through MO2** toggle.
 
 A developer script beside `scripts/prepare-skyrim-test.mjs`, not product code:
 restore Data from
-`~/.local/share/respawn-plus/backups/skyrim-test-1792827196689/manifest.json`
+`~/.local/share/vessel/backups/skyrim-test-1792827196689/manifest.json`
 (hash-checked before any deletion; stop on mismatch; SKSE loader and DLL stay),
 then install SkyUI from the user's zip as an MO2 mod and enable its plugin.
 

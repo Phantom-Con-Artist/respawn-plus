@@ -293,8 +293,7 @@ fn umu_mounts(
     let source = dirs::data_dir().ok_or("Cannot find UMU data")?.join("umu");
     if !source.exists() {
         return Err(
-            "The shared UMU Linux runtime is not installed. Run Respawn+ runtime setup first."
-                .into(),
+            "The shared UMU Linux runtime is not installed. Run Vessel runtime setup first.".into(),
         );
     }
     let target = home.join(".local/share/umu");
@@ -324,7 +323,7 @@ fn umu_mounts(
                         .join(member.file_name())
                 ]));
                 if member.path().join("files/.ref").is_file() {
-                    let references = home.join(".cache/respawn-runtime-refs");
+                    let references = home.join(".cache/vessel-runtime-refs");
                     fs::create_dir_all(&references).map_err(err)?;
                     let reference = references.join(format!(
                         "{}-{}",
@@ -468,7 +467,7 @@ impl RoomManager {
                 .as_nanos();
             // Unix socket names are limited to ~108 bytes; app-data paths can be much longer.
             let ipc = std::env::temp_dir().join(format!(
-                "respawn-{}-{}-{stamp:x}",
+                "vessel-{}-{}-{stamp:x}",
                 std::process::id(),
                 game.id
             ));
@@ -489,7 +488,7 @@ impl RoomManager {
             fs::write(
                 &accounts,
                 format!(
-                    "root:x:0:0:root:/root:/bin/false\n{user}:x:{uid}:{}:Respawn room:{}:/bin/sh\n",
+                    "root:x:0:0:root:/root:/bin/false\n{user}:x:{uid}:{}:Vessel room:{}:/bin/sh\n",
                     unsafe { libc::getgid() },
                     guest_home.display()
                 ),
@@ -546,7 +545,7 @@ impl RoomManager {
             if game.runtime_kind == "proton" {
                 environment.insert(
                     "PRESSURE_VESSEL_FILESYSTEMS_RO".into(),
-                    Value::String("/run/respawn/packages".into()),
+                    Value::String("/run/vessel/packages".into()),
                 );
             }
             // Only explicit runner variables are carried over; no host environment inheritance.

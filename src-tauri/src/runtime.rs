@@ -52,7 +52,7 @@ pub fn discover() -> Vec<Runtime> {
     ] {
         scan_directory(Path::new(directory), &mut found, &mut seen);
     }
-    if let Some(paths) = std::env::var_os("RESPAWN_RUNTIME_DIRS") {
+    if let Some(paths) = std::env::var_os("VESSEL_RUNTIME_DIRS") {
         for directory in std::env::split_paths(&paths) {
             scan_directory(&directory, &mut found, &mut seen);
         }

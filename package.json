@@ -1,8 +1,8 @@
 {
-  "name": "respawn-plus",
+  "name": "vessel",
   "private": true,
   "version": "0.1.0",
-  "description": "Respawn+ \u2014 a Linux game launcher and modding environment",
+  "description": "Vessel \u2014 a Linux game launcher and modding environment",
   "license": "MIT",
   "type": "module",
   "scripts": {

@@ -13,7 +13,7 @@ npm run test-game:play
 ```
 
 The setup command installs the standalone executable under
-`~/.local/share/respawn-plus/test-games/mines/20260923.616da16/`, verifies its exact
+`~/.local/share/vessel/test-games/mines/20260923.616da16/`, verifies its exact
 SHA-256 and size, and installs the upstream license. No administrator access is
 required. Game binaries and generated data are stored outside the repository.
 
@@ -27,17 +27,17 @@ The initial setup also downloaded that version's source archive to
 checksum is recorded in the manifest. Repeat setup only downloads the executable.
 
 The play command uses UMU and the installed `GE-Proton11-11-x86_64` by default.
-It assigns a dedicated `~/.local/share/respawn-plus/prefixes/mines-test` Wine
-prefix and writes UMU/Proton logs to `~/.local/state/respawn-plus/logs/mines/`.
+It assigns a dedicated `~/.local/share/vessel/prefixes/mines-test` Wine
+prefix and writes UMU/Proton logs to `~/.local/state/vessel/logs/mines/`.
 XDG data/state directory overrides are respected. Close the game normally to
 return its exit status to the launching terminal.
 
 Custom runtime and prefix overrides:
 
 ```bash
-RESPAWN_PROTON_PATH=/absolute/path/to/Proton \
-  RESPAWN_UMU_PATH=/absolute/path/to/umu-run \
-  RESPAWN_TEST_PREFIX=/absolute/path/to/test-prefix \
+VESSEL_PROTON_PATH=/absolute/path/to/Proton \
+  VESSEL_UMU_PATH=/absolute/path/to/umu-run \
+  VESSEL_TEST_PREFIX=/absolute/path/to/test-prefix \
   npm run test-game:play
 ```
 
@@ -54,6 +54,6 @@ It does not exercise DirectX/Vulkan graphics, trainer injection, mod deployment,
 or Skyrim compatibility. Save/load and restart behavior should be checked as
 those launcher features are developed.
 
-The npm scripts remain useful as a developer fixture. Respawn+'s desktop library
+The npm scripts remain useful as a developer fixture. Vessel's desktop library
 also discovers this installation and can launch it from a game card, using its
 own per-game prefix and library logs. See [the library guide](library.md).

@@ -14,7 +14,7 @@ getVersion().then((version) => { $('#version').textContent = 'v' + version; }).c
 
 // Theme: an explicit choice is remembered per machine; otherwise follow the system.
 const systemDark = matchMedia('(prefers-color-scheme: dark)');
-function storedTheme() { try { return localStorage.getItem('respawn-theme'); } catch { return null; } }
+function storedTheme() { try { return localStorage.getItem('vessel-theme'); } catch { return null; } }
 function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
   $('#theme-toggle').textContent = theme === 'dark' ? 'Light theme' : 'Dark theme';
@@ -23,7 +23,7 @@ applyTheme(storedTheme() || (systemDark.matches ? 'dark' : 'light'));
 systemDark.addEventListener('change', (event) => { if (!storedTheme()) applyTheme(event.matches ? 'dark' : 'light'); });
 $('#theme-toggle').addEventListener('click', () => {
   const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-  try { localStorage.setItem('respawn-theme', next); } catch { /* theme still applies for this session */ }
+  try { localStorage.setItem('vessel-theme', next); } catch { /* theme still applies for this session */ }
   applyTheme(next);
 });
 
@@ -176,7 +176,7 @@ function sessionItem(session, game) {
   if (game) { const link = element('a', game.name, 'session-game'); link.href = '#/game/' + game.id; text.append(link); }
   text.append(element('span', clock(session.started_at) + (session.via ? ' · ' + session.via : ''), 'muted small'));
   item.append(text, element('span', live ? 'Playing' : session.seconds == null ? '—' : duration(session.seconds), 'num session-time'));
-  if (session.seconds == null && !live) item.lastChild.title = 'This session ended while Respawn+ was closed, so its length is unknown';
+  if (session.seconds == null && !live) item.lastChild.title = 'This session ended while Vessel was closed, so its length is unknown';
   return item;
 }
 // The 14-day strip: one bar per day from daily totals, today in the data hue, a rounded scale above the maximum.
@@ -363,7 +363,7 @@ function renderGame() {
   // Default and borderless fill the monitor at its own resolution; the size is only for the others.
   const custom = displayMode() === 'fullscreen' || displayMode() === 'windowed';
   $('#display-width').disabled = $('#display-height').disabled = displayLocked || !custom;
-  $('#display-note').textContent = game.display_supported ? 'The game is shown on its room’s own screen. Respawn+ sets that screen, never the game’s files, so this works for any game.' :
+  $('#display-note').textContent = game.display_supported ? 'The game is shown on its room’s own screen. Vessel sets that screen, never the game’s files, so this works for any game.' :
     'This room shows the game directly (native Wayland or headless), so the game keeps its own window settings.';
   renderTools(game);
   renderRecovery(game);
@@ -698,8 +698,8 @@ async function initialize() {
     if (!games.length) await scan();
   } catch (error) {
     $('#environment-state').textContent = 'Backend unavailable';
-    $('#library-summary').textContent = 'Open Respawn+ Launcher as a desktop app to load your games.';
-    $('#game-list').replaceChildren(element('p', 'The game library needs the Respawn+ desktop backend.', 'empty'));
+    $('#library-summary').textContent = 'Open Vessel as a desktop app to load your games.';
+    $('#game-list').replaceChildren(element('p', 'The game library needs the Vessel desktop backend.', 'empty'));
     message(String(error), true); setBusy(false);
   }
 }

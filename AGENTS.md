@@ -5,7 +5,7 @@ default habits. Read `README.md` and the relevant file in `docs/` before changin
 
 ## Be agnostic: never hardcode
 
-Respawn+ is a general launcher. Code must work for any:
+Vessel is a general launcher. Code must work for any:
 
 - **game**: any Windows game, engine or store, not a list of known titles;
 - **platform**: any Linux distribution, desktop (KDE, GNOME, wlroots, X11), GPU vendor,
@@ -60,7 +60,7 @@ the area:
   ```sh
   cargo test --manifest-path src-tauri/Cargo.toml --lib --offline
   cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --offline -- -D warnings
-  RESPAWN_TEST_WINE=1 npm run test:rooms
+  VESSEL_TEST_WINE=1 npm run test:rooms
   npm run check && npm run build && npm run test:packaging
   ```
 

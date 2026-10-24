@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { validateRuntimeBundle } from '../scripts/check-runtime-bundle.mjs';
 
 async function fixture(t) {
-  const base = await mkdtemp(join(tmpdir(), 'respawn-bundle-test-'));
+  const base = await mkdtemp(join(tmpdir(), 'vessel-bundle-test-'));
   t.after(() => rm(base, { recursive: true, force: true }));
   const payload = 'runtime-fixture';
   const digest = createHash('sha256').update(payload).digest('hex');
@@ -47,7 +47,7 @@ test('requires source materials and every full-edition runtime', async (t) => {
 test('rejects source paths and symlinks outside the staged bundle', async (t) => {
   const { base, manifest } = await fixture(t);
   // Point outside the bundle, to an existing file, to test the containment check.
-  const outside = await mkdtemp(join(tmpdir(), 'respawn-outside-test-'));
+  const outside = await mkdtemp(join(tmpdir(), 'vessel-outside-test-'));
   t.after(() => rm(outside, { recursive: true, force: true }));
   await writeFile(join(outside, 'source'), 'source');
   await symlink(join(outside, 'source'), join(base, 'outside-link'));

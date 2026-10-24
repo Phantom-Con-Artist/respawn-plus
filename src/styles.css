@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: MIT */
-/* Respawn+ Launcher — simple, soft futuristic. Style: true-black flat (cool variant).
+/* Vessel — simple, soft futuristic. Style: true-black flat (cool variant).
    Elevation by lightness alone; no borders or shadows on resting cards; the primary action is an
    inverted pill; the one hue (soft teal, from the voxel "+" mark) appears only on data and status.
    Grid arithmetic: canvas = 6 columns, 14px gutter both ways; spans 4+2, 2+2+2 and 6 land on the
@@ -32,6 +32,7 @@
   --negative: #c4242a;
   --warning-ink: #92400e; --warning-bg: #fff4dc;
   --art-ground: #e6e8ec;
+  --mark-light: #18e6e4; --mark-deep: #0b1c1f; /* the Vessel mark's two panels */
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -42,6 +43,7 @@
     --accent: #6fe3d4; --accent-soft: #15302d;
     --negative: #e5566f; --warning-ink: #e5a93b; --warning-bg: #2b2414;
     --art-ground: #101214;
+    --mark-deep: #2f6f74;
   }
 }
 :root[data-theme="dark"] {
@@ -52,6 +54,7 @@
   --accent: #6fe3d4; --accent-soft: #15302d;
   --negative: #e5566f; --warning-ink: #e5a93b; --warning-bg: #2b2414;
   --art-ground: #101214;
+  --mark-deep: #2f6f74;
 }
 
 * { box-sizing: border-box; }

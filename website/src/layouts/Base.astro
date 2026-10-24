@@ -36,7 +36,7 @@ const heights = [78, 64, 86, 70, 92, 66, 82, 100];
   </head>
   <body id="top">
     <header class="nav">
-      <a class="lockup" href="/" aria-label="Respawn+ home"><img src="/favicon.svg" alt="" width="32" height="32" data-spin="0.25" /><span>Respawn<span class="plus">+</span></span></a>
+      <a class="lockup" href="/" aria-label="Vessel home"><img src="/favicon.svg" alt="" width="32" height="32" data-spin="0.25" /><span>Respawn<span class="plus">+</span></span></a>
       <nav class="nav-links" aria-label="Main">
         <a href="/docs/" aria-current={current === 'docs' ? 'page' : undefined}>Docs</a>
         <a href="/downloads/" aria-current={current === 'downloads' ? 'page' : undefined}>Downloads</a>
@@ -50,7 +50,7 @@ const heights = [78, 64, 86, 70, 92, 66, 82, 100];
     </header>
     <main><slot /></main>
     <footer class="footer">
-      <div class="blocks reveal" role="img" aria-label="Respawn+, built from blocks">
+      <div class="blocks reveal" role="img" aria-label="Vessel, built from blocks">
         {letters.map((l, i) => <span style={`--h:${heights[i]}%`}>{l}</span>)}
       </div>
       <div class="footer-links">
@@ -59,7 +59,7 @@ const heights = [78, 64, 86, 70, 92, 66, 82, 100];
         <div><h2>Project</h2><a href={repo}>Source code</a><a href={`${repo}/blob/main/LICENSE`}>MIT licence</a><a href={`${repo}/blob/main/THIRD_PARTY_NOTICES.md`}>Third-party notices</a></div>
         <div class="contact"><h2>Talk to us</h2><a href={`${repo}/issues`}>Report a bug or ask a question on GitHub Issues</a><a href={`${repo}/releases`}>Follow releases on GitHub</a></div>
       </div>
-      <div class="footer-end"><span>© 2026 Respawn+ contributors · v0.1.0 Beta · MIT</span><a class="button alt" href="#top">Back to top</a></div>
+      <div class="footer-end"><span>© 2026 Vessel contributors · v0.1.0 Beta · MIT</span><a class="button alt" href="#top">Back to top</a></div>
     </footer>
     <script>
       // Theme toggle: flips and remembers the choice.

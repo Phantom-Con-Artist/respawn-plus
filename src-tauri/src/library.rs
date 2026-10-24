@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-use crate::{database, discovery, display, recovery, rooms, runtime};
+use crate::{database, discovery, display, former_name, recovery, rooms, runtime};
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -54,7 +54,7 @@ pub struct Game {
     pub display_mode: String,
     pub display_width: Option<u32>,
     pub display_height: Option<u32>,
-    /// Whether Respawn+ can set this game's window mode (see `display`).
+    /// Whether Vessel can set this game's window mode (see `display`).
     pub display_supported: bool,
     /// Companion app (usually a mod manager) that Play starts instead of the game.
     pub launch_via_tool_id: Option<i64>,
@@ -72,7 +72,7 @@ pub struct Session {
     pub started_at: String,
     pub ended_at: Option<String>,
     pub state: String,
-    /// Known duration; `None` while unknown (the session ended while Respawn+ was not watching).
+    /// Known duration; `None` while unknown (the session ended while Vessel was not watching).
     pub seconds: Option<i64>,
     /// Companion profile that started the game, when it was not launched directly.
     pub via: Option<String>,
@@ -158,12 +158,11 @@ impl Launcher {
         }
     }
     pub fn new() -> Result<Self, String> {
-        let data = dirs::data_dir()
-            .ok_or("Cannot locate app data")?
-            .join("respawn-plus");
-        let logs = dirs::state_dir()
-            .unwrap_or_else(|| data.clone())
-            .join("respawn-plus/logs/library");
+        let data_root = dirs::data_dir().ok_or("Cannot locate app data")?;
+        let state_root = dirs::state_dir().unwrap_or_else(|| data_root.clone());
+        former_name::adopt_library(&data_root, &state_root)?;
+        let data = data_root.join(former_name::NAME);
+        let logs = state_root.join(former_name::NAME).join("logs/library");
         Self::at(data, logs)
     }
 
@@ -178,8 +177,8 @@ impl Launcher {
             .map_err(|e| e.to_string())?;
         instance_lock
             .try_lock()
-            .map_err(|_| "This Respawn+ library is already open in another process")?;
-        let db = data.join("respawn-plus.sqlite3");
+            .map_err(|_| "This Vessel library is already open in another process")?;
+        let db = data.join(format!("{}.sqlite3", former_name::NAME));
         database::open(&db).map_err(|e| e.to_string())?;
         let service = Self {
             data,
@@ -466,7 +465,7 @@ impl Launcher {
         let mut log = File::create_new(&log_path).map_err(|e| e.to_string())?;
         writeln!(
             log,
-            "Respawn+ launch: {}\nExecutable: {}\nRuntime: {}\nPrefix: {}\n",
+            "Vessel launch: {}\nExecutable: {}\nRuntime: {}\nPrefix: {}\n",
             game.name, game.executable, game.runtime_path, game.prefix
         )
         .map_err(|e| e.to_string())?;

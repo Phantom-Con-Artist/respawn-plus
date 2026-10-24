@@ -49,7 +49,7 @@ UMU's installed Steam Linux Runtime payload is exposed read-only, with private m
 
 ## Validation
 
-`npm run test:rooms` exercises real bubblewrap mount/PID/network namespaces, read-only shared inodes, hidden host files/environment, shared companion namespaces, private Xwayland, host abstract-socket isolation, package poisoning/repair, path traversal and control-socket spoofing. Set `RESPAWN_TEST_WINE=1` to include real Wine console startup. Rust tests cover SQLite migration, save preservation, policy restoration, Wine aliases, and interrupted directory switches.
+`npm run test:rooms` exercises real bubblewrap mount/PID/network namespaces, read-only shared inodes, hidden host files/environment, shared companion namespaces, private Xwayland, host abstract-socket isolation, package poisoning/repair, path traversal and control-socket spoofing. Set `VESSEL_TEST_WINE=1` to include real Wine console startup. Rust tests cover SQLite migration, save preservation, policy restoration, Wine aliases, and interrupted directory switches.
 
 The disposable lab uses independent reflink/copy game trees and a separate database:
 
