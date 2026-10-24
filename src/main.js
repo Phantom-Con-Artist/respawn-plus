@@ -1,21 +1,23 @@
 // SPDX-License-Identifier: MIT
 import { invoke } from '@tauri-apps/api/core';
-import { open } from '@tauri-apps/plugin-dialog';
+import { getVersion } from '@tauri-apps/api/app';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import '@fontsource-variable/geist';
+import { open } from '@tauri-apps/plugin-dialog';
+import '@fontsource-variable/inter';
 import '@fontsource-variable/geist-mono';
 import './styles.css';
-import { voxelMark } from './brand.js';
+import { appIcon } from './brand.js';
 
 const $ = (selector) => document.querySelector(selector);
-for (const slot of document.querySelectorAll('[data-voxel-mark]')) slot.innerHTML = voxelMark;
+for (const slot of document.querySelectorAll('[data-app-icon]')) slot.innerHTML = appIcon;
+getVersion().then((version) => { $('#version').textContent = 'v' + version; }).catch(() => {});
 
 // Theme: an explicit choice is remembered per machine; otherwise follow the system.
 const systemDark = matchMedia('(prefers-color-scheme: dark)');
 function storedTheme() { try { return localStorage.getItem('respawn-theme'); } catch { return null; } }
 function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
-  $('#theme-toggle').setAttribute('aria-label', 'Switch to ' + (theme === 'dark' ? 'light' : 'dark') + ' theme');
+  $('#theme-toggle').textContent = theme === 'dark' ? 'Light theme' : 'Dark theme';
 }
 applyTheme(storedTheme() || (systemDark.matches ? 'dark' : 'light'));
 systemDark.addEventListener('change', (event) => { if (!storedTheme()) applyTheme(event.matches ? 'dark' : 'light'); });
@@ -25,7 +27,7 @@ $('#theme-toggle').addEventListener('click', () => {
   applyTheme(next);
 });
 
-// Window controls live in the app's own title bar (decorations are off).
+// Window controls live in the app's own top bar (decorations are off).
 const appWindow = (() => { try { return getCurrentWindow(); } catch { return null; } })();
 async function syncMaximized() {
   const maximized = await appWindow?.isMaximized().catch(() => false);
@@ -53,25 +55,31 @@ function message(text, error = false) {
 function parseTime(value) { return value ? new Date(value.replace(' ', 'T') + 'Z') : null; }
 function duration(seconds) {
   if (seconds == null) return '—';
+  if (seconds === 0) return '0 m';
   if (seconds < 60) return '<1 m';
   const hours = Math.floor(seconds / 3600), minutes = Math.round((seconds % 3600) / 60);
   return hours ? hours + ' h' + (minutes ? ' ' + minutes + ' m' : '') : minutes + ' m';
 }
 function relative(value) {
   const date = parseTime(value);
-  if (!date) return 'Never';
+  if (!date) return 'never';
   const minutes = Math.round((Date.now() - date) / 60000);
-  if (minutes < 1) return 'Just now';
+  if (minutes < 1) return 'just now';
   if (minutes < 60) return minutes + ' min ago';
   if (minutes < 24 * 60) return Math.round(minutes / 60) + ' h ago';
-  if (minutes < 48 * 60) return 'Yesterday';
+  if (minutes < 48 * 60) return 'yesterday';
   return date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: date.getFullYear() === new Date().getFullYear() ? undefined : 'numeric' });
 }
-function clock(value) { return parseTime(value)?.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) ?? ''; }
+function clock(value) { return parseTime(value)?.toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) ?? ''; }
 const MODE_NAMES = { default: 'Game default', fullscreen: 'Fullscreen', borderless: 'Borderless', windowed: 'Windowed' };
 function displayLabel(game) {
   if (!game.display_supported) return 'In-game setting';
   return MODE_NAMES[game.display_mode] + (game.display_mode !== 'default' && game.display_width ? ' · ' + game.display_width + '×' + game.display_height : '');
+}
+function runnerName(game) {
+  if (!game.runtime_path) return 'No runtime';
+  const parts = game.runtime_path.split('/');
+  return game.runtime_kind === 'proton' ? parts[parts.length - 2] || 'Proton' : parts[parts.length - 1];
 }
 
 // ---------- Game state ----------
@@ -80,13 +88,13 @@ function running(item) { return item.launch?.state === 'running'; }
 function gameSessionRunning(game) { return running(game) || (game.tools || []).some((tool) => tool.kind === 'script_extender' && running(tool)); }
 function environmentBusy(game) { return running(game) || (game.tools || []).some(running); }
 function canPlay(game) { return !busy && !dirty && !gameSessionRunning(game) && game.available && !!game.runtime_path; }
+function needsSetup(game) { return !game.available || !game.runtime_path; }
 function gameStatus(game) {
   if (!game.available) return 'Executable missing';
   if (gameSessionRunning(game)) return 'Running';
   if ((game.tools || []).some(running)) return 'Companion app open';
-  if (game.launch?.state === 'failed') return 'Launch failed';
+  if (game.launch?.state === 'failed') return 'Last launch failed';
   if (!game.runtime_path) return 'Choose a runtime';
-  if (game.launch?.state === 'unknown') return 'Previous session ended';
   return 'Ready to play';
 }
 function element(tag, text, className) {
@@ -101,61 +109,62 @@ function artwork(game) {
   if (executable.endsWith('/mines.exe')) return { src: '/artwork/mines.png', kind: 'screenshot', credit: 'Simon Tatham’s Portable Puzzles' };
   return null;
 }
-// Artwork with a voxel fallback that shows the game's name if the image is missing or fails.
+// Artwork, falling back to the game's name on a quiet field if the image is missing or fails.
 function artNode(game, className) {
   const art = artwork(game);
-  const frame = element('div', undefined, className);
-  const fallback = element('span', game.name, 'cover-fallback');
+  const frame = element('div', undefined, className + ' art');
+  const fallback = element('span', game.name, 'art-fallback');
   if (art) {
     const image = element('img');
     image.src = art.src; image.alt = ''; image.className = art.kind; image.referrerPolicy = 'no-referrer';
     image.addEventListener('error', () => { image.remove(); fallback.hidden = false; });
-    fallback.hidden = true; frame.append(image);
-    frame.title = 'Artwork: ' + art.credit;
+    fallback.hidden = true; frame.append(image); frame.title = 'Artwork: ' + art.credit;
   }
   frame.append(fallback);
   return frame;
 }
-function playButton(game, className = 'row-play') {
+function playButton(game, className = 'primary small-button') {
   const play = element('button', gameSessionRunning(game) ? 'Running' : 'Play', className);
-  play.setAttribute('aria-label', (gameSessionRunning(game) ? game.name + ' is running' : 'Play ' + game.name));
+  play.setAttribute('aria-label', gameSessionRunning(game) ? game.name + ' is running' : 'Play ' + game.name);
   play.disabled = !canPlay(game);
-  play.addEventListener('click', (event) => { event.stopPropagation(); playGame(game.id); });
+  play.addEventListener('click', (event) => { event.preventDefault(); event.stopPropagation(); playGame(game.id); });
   return play;
 }
-function gameCard(game, index) {
+function statusNode(game) {
+  const node = element('span', gameStatus(game), 'state');
+  node.dataset.state = environmentBusy(game) ? 'running' : needsSetup(game) || game.launch?.state === 'failed' ? 'attention' : 'ready';
+  return node;
+}
+function gameCard(game) {
   const card = element('article', undefined, 'game-card');
-  card.style.setProperty('--i', index);
-  card.dataset.featured = String(artwork(game)?.kind === 'landscape');
-  card.dataset.running = String(environmentBusy(game));
-  const open = element('a', undefined, 'game-open');
-  open.href = '#/game/' + game.id;
-  open.setAttribute('aria-label', game.name + ' details');
-  const info = element('div', undefined, 'game-info');
-  info.append(element('strong', game.name), element('span', gameStatus(game), environmentBusy(game) ? 'status running' : 'status'));
-  open.append(artNode(game, 'game-art'), info);
-  const footer = element('div', undefined, 'game-card-footer');
-  footer.append(element('span', game.play_seconds ? duration(game.play_seconds) + ' played' : 'Not played yet', 'card-meta'), playButton(game));
-  card.append(open, footer);
+  const link = element('a', undefined, 'game-link');
+  link.href = '#/game/' + game.id;
+  link.setAttribute('aria-label', game.name + ' details');
+  link.append(artNode(game, 'game-art'));
+  const body = element('div', undefined, 'game-body');
+  const text = element('div');
+  text.append(element('strong', game.name, 'game-name'), element('span', game.play_seconds ? duration(game.play_seconds) + ' played' : 'Not played yet', 'muted small num'));
+  body.append(text, playButton(game));
+  card.append(link, body, statusNode(game));
   return card;
 }
 
 // ---------- Rendering ----------
 function renderShell() {
-  const game = current();
-  $('#crumbs').textContent = ['RESPAWN+', view.name === 'game' ? 'LIBRARY' : view.name.toUpperCase(), game?.name.toUpperCase()].filter(Boolean).join(' // ');
   for (const link of document.querySelectorAll('[data-nav]')) {
     const active = link.dataset.nav === view.name || (view.name === 'game' && link.dataset.nav === 'library');
     if (active) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
   }
-  $('#nav-count').textContent = games.length || '';
+  $('#nav-count').textContent = games.length ? String(games.length) : '';
+  $('#back-library').hidden = view.name !== 'game';
   const list = $('#running-list'); list.replaceChildren();
   const active = games.filter(environmentBusy);
   if (!active.length) list.append(element('li', 'Nothing running', 'muted'));
   for (const game of active) {
     const item = element('li'); const link = element('a', game.name); link.href = '#/game/' + game.id;
     const apps = (game.tools || []).filter(running).map((t) => t.name);
-    item.append(link, element('span', apps.length ? apps.join(' · ') : 'Game', 'running-apps')); list.append(item);
+    item.append(link, element('span', apps.length ? apps.join(', ') : 'Game', 'muted small'));
+    list.append(item);
   }
   for (const name of ['home', 'library', 'game']) $('#view-' + name).hidden = view.name !== name;
 }
@@ -163,67 +172,121 @@ function sessionItem(session, game) {
   const item = element('li', undefined, 'session');
   const live = session.state === 'running' || session.state === 'starting';
   item.dataset.live = String(live);
-  const head = element('div', undefined, 'session-head');
-  if (game) { const link = element('a', game.name, 'session-game'); link.href = '#/game/' + game.id; head.append(link); }
-  head.append(element('span', live ? 'Playing now' : session.seconds == null ? 'Duration unknown' : duration(session.seconds), 'session-duration'));
-  item.append(head, element('span', clock(session.started_at) + (session.via ? ' · ' + session.via : ''), 'session-when'));
+  const text = element('div');
+  if (game) { const link = element('a', game.name, 'session-game'); link.href = '#/game/' + game.id; text.append(link); }
+  text.append(element('span', clock(session.started_at) + (session.via ? ' · ' + session.via : ''), 'muted small'));
+  item.append(text, element('span', live ? 'Playing' : session.seconds == null ? '—' : duration(session.seconds), 'num session-time'));
+  if (session.seconds == null && !live) item.lastChild.title = 'This session ended while Respawn+ was closed, so its length is unknown';
   return item;
+}
+// The 14-day strip: one bar per day from daily totals, today in the data hue, a rounded scale above the maximum.
+function renderPlaytime() {
+  const days = [];
+  const today = new Date();
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - i));
+    days.push({ key: d.toISOString().slice(0, 10), date: d, seconds: 0 });
+  }
+  for (const game of games) for (const day of game.daily_play || []) {
+    const slot = days.find((d) => d.key === day.date);
+    if (slot) slot.seconds += day.seconds;
+  }
+  const total = days.reduce((sum, d) => sum + d.seconds, 0);
+  $('#playtime-total').textContent = duration(total);
+  const maxMinutes = Math.max(...days.map((d) => d.seconds / 60));
+  const steps = [5, 10, 15, 30, 60, 120, 180, 240, 360, 480, 720];
+  const top = steps.find((s) => s > maxMinutes) || Math.ceil(maxMinutes / 60) * 60 + 60;
+  const W = Math.max(260, $('#playtime-chart').clientWidth || 320), H = 168, left = 36, bottom = 22, plot = H - bottom - 8, slot = (W - left) / days.length;
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('role', 'img');
+  svg.setAttribute('aria-label', 'Playtime per day over the last 14 days, ' + duration(total) + ' in total');
+  const add = (tag, attrs, text) => { const n = document.createElementNS(ns, tag); for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v); if (text != null) n.textContent = text; svg.append(n); return n; };
+  for (const value of [0, top / 2, top]) {
+    const y = 8 + plot - (value / top) * plot;
+    add('line', { x1: left, x2: W, y1: y, y2: y, class: value ? 'grid-line' : 'base-line' });
+    add('text', { x: left - 6, y: y + 4, 'text-anchor': 'end', class: 'tick' }, value >= 60 ? value / 60 + ' h' : value + ' m');
+  }
+  days.forEach((day, i) => {
+    const h = (day.seconds / 60 / top) * plot;
+    const x = left + i * slot + slot * 0.2;
+    if (h > 0) {
+      const bar = add('rect', { x, y: 8 + plot - h, width: slot * 0.6, height: Math.max(h, 1.5), class: i === 13 ? 'bar today' : 'bar' });
+      const title = document.createElementNS(ns, 'title');
+      title.textContent = day.date.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }) + ': ' + duration(day.seconds);
+      bar.append(title);
+    }
+    if (i % 3 === 1 || i === 13) add('text', { x: x + slot * 0.3, y: H - 6, 'text-anchor': 'middle', class: 'tick' }, i === 13 ? 'Today' : day.date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', timeZone: 'UTC' }));
+  });
+  $('#playtime-chart').replaceChildren(svg);
 }
 function renderHome() {
   const played = games.filter((g) => g.last_played_at).sort((a, b) => b.last_played_at.localeCompare(a.last_played_at));
   const hero = games.find(gameSessionRunning) || played[0] || games[0];
-  const art = $('#continue-art'); art.replaceChildren();
-  $('#continue').dataset.empty = String(!hero);
+  $('#continue-art').replaceChildren(...(hero ? [artNode(hero, 'continue-image')] : []));
   if (hero) {
-    art.append(artNode(hero, 'continue-image'));
-    $('#continue-eyebrow').textContent = gameSessionRunning(hero) ? 'Playing now' : hero.last_played_at ? 'Continue playing' : 'Ready when you are';
-    $('#home-title').textContent = hero.name;
-    const last = hero.sessions?.[0];
-    $('#continue-meta').textContent = [hero.last_played_at ? 'Last played ' + relative(hero.last_played_at).toLowerCase() : 'Not played yet',
-      last?.seconds != null ? 'last session ' + duration(last.seconds) : null, hero.play_seconds ? duration(hero.play_seconds) + ' total' : null].filter(Boolean).join(' · ');
+    const last = (hero.sessions || []).find((s) => s.seconds != null);
+    $('#continue-label').textContent = gameSessionRunning(hero) ? 'Playing now' : hero.last_played_at ? 'Continue playing' : 'Ready to play';
+    $('#continue-name').textContent = hero.name;
+    $('#continue-meta').textContent = [hero.last_played_at ? 'Played ' + relative(hero.last_played_at) : 'Not played yet', last ? 'last session ' + duration(last.seconds) : null, runnerName(hero)].filter(Boolean).join(' · ');
     $('#continue-play').textContent = gameSessionRunning(hero) ? 'Running' : 'Play';
     $('#continue-play').disabled = !canPlay(hero);
     $('#continue-play').dataset.gameId = hero.id;
-    $('#continue-details').textContent = 'Game details'; $('#continue-details').href = '#/game/' + hero.id;
+    $('#continue-details').href = '#/game/' + hero.id;
+    $('#home-finding').textContent = gameSessionRunning(hero) ? hero.name + ' is running now.' :
+      hero.last_played_at ? hero.name + ' was played ' + relative(hero.last_played_at) + (last ? ', for ' + duration(last.seconds) + '.' : '.') : games.length + ' games ready to play.';
   } else {
-    $('#continue-eyebrow').textContent = 'Welcome';
-    $('#home-title').textContent = 'Build your library.';
-    $('#continue-meta').textContent = 'Find installed Windows games or add an executable. Each game gets its own environment on this machine.';
-    $('#continue-play').disabled = true; $('#continue-details').textContent = 'Open library'; $('#continue-details').href = '#/library';
+    $('#continue-label').textContent = 'Get started';
+    $('#continue-name').textContent = 'Build your library';
+    $('#continue-meta').textContent = 'Find installed Windows games or add an executable. Each game gets its own environment.';
+    $('#continue-play').disabled = true;
+    $('#continue-details').href = '#/library';
+    $('#home-finding').textContent = 'No games in your library yet.';
   }
+  const sessions = games.flatMap((g) => (g.sessions || []).map((s) => [s, g])).sort((a, b) => b[0].started_at.localeCompare(a[0].started_at));
   $('#stat-playtime').textContent = duration(games.reduce((sum, g) => sum + (g.play_seconds || 0), 0));
+  const weekStart = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
+  $('#stat-week').textContent = duration(games.flatMap((g) => g.daily_play || []).filter((d) => d.date >= weekStart).reduce((sum, d) => sum + d.seconds, 0));
   $('#stat-games').textContent = String(games.length);
-  $('#stat-running').textContent = String(games.filter(environmentBusy).length);
   $('#stat-tools').textContent = String(games.reduce((sum, g) => sum + (g.tools || []).length, 0));
+  renderPlaytime();
   const recent = $('#recent-list'); recent.replaceChildren();
-  const row = (played.length ? played : games).slice(0, 4);
-  if (!row.length) recent.append(element('p', 'Games you play show up here.', 'empty'));
-  row.forEach((game, i) => recent.append(gameCard(game, i)));
-  const sessions = games.flatMap((g) => (g.sessions || []).map((s) => [s, g])).sort((a, b) => b[0].started_at.localeCompare(a[0].started_at)).slice(0, 7);
-  const timeline = $('#session-list'); timeline.replaceChildren();
-  if (!sessions.length) timeline.append(element('li', 'No sessions yet. Press Play on any game.', 'empty'));
-  for (const [session, game] of sessions) timeline.append(sessionItem(session, game));
+  const row = (played.length ? played : games).slice(0, 3);
+  if (!row.length) recent.append(element('p', 'Games you play appear here.', 'empty'));
+  for (const game of row) recent.append(gameCard(game));
+  const list = $('#session-list'); list.replaceChildren();
+  if (!sessions.length) list.append(element('li', 'No sessions yet. Press Play on any game.', 'empty'));
+  for (const [session, game] of sessions.slice(0, 5)) list.append(sessionItem(session, game));
+}
+function matchesFilter(game, name) {
+  if (name === 'running') return environmentBusy(game);
+  if (name === 'ready') return !needsSetup(game) && !environmentBusy(game);
+  if (name === 'setup') return needsSetup(game);
+  return true;
 }
 function renderLibrary() {
   const query = $('#search').value.toLocaleLowerCase();
-  const shown = games.filter((g) => (filter !== 'running' || environmentBusy(g)) && g.name.toLocaleLowerCase().includes(query));
-  $('#library-summary').textContent = games.length + (games.length === 1 ? ' game' : ' games') + ' in your library';
-  $('#shown-count').textContent = shown.length + ' shown';
-  $('#filter-all').setAttribute('aria-pressed', String(filter === 'all'));
-  $('#filter-running').setAttribute('aria-pressed', String(filter === 'running'));
+  for (const button of document.querySelectorAll('[data-filter]')) {
+    button.setAttribute('aria-pressed', String(button.dataset.filter === filter));
+    button.querySelector('[data-count]').textContent = String(games.filter((g) => matchesFilter(g, button.dataset.filter)).length);
+  }
+  const shown = games.filter((g) => matchesFilter(g, filter) && g.name.toLocaleLowerCase().includes(query));
+  $('#library-summary').textContent = games.length + (games.length === 1 ? ' game' : ' games') + ' · ' + runtimes.length + ' runtimes found';
+  $('#shown-count').textContent = shown.length + ' of ' + games.length + ' shown';
   const list = $('#game-list'); list.replaceChildren();
   if (!shown.length) {
-    list.append(element('p', games.length ? 'No games match this view.' : 'Your library is empty. Find games or add a Windows executable.', 'empty'));
+    list.append(element('p', games.length ? 'No games match this filter.' : 'Your library is empty. Find games or add a Windows executable.', 'empty'));
     return;
   }
-  shown.forEach((game, i) => list.append(gameCard(game, i)));
+  for (const game of shown) list.append(gameCard(game));
 }
 function renderRuntimes() {
-  $('#runtime-count').textContent = '(' + runtimes.length + ')';
+  $('#runtime-count').textContent = String(runtimes.length);
   const list = $('#runtimes'); list.replaceChildren();
   for (const runtime of runtimes) {
     const row = element('li');
-    row.append(element('strong', runtime.name), element('span', runtime.path, 'runtime-path'));
+    row.append(element('strong', runtime.name), element('span', runtime.path, 'path muted'));
     list.append(row);
   }
   if (!runtimes.length) list.append(element('li', 'No installed runtimes found. Add a custom runner in launch settings.'));
@@ -251,18 +314,17 @@ function displayMode() { return document.querySelector('[name="display-mode"]:ch
 function renderGame() {
   const game = current();
   if (!game) return;
-  const art = $('#game-hero-art'); art.replaceChildren(artNode(game, 'hero-image'));
+  $('#game-cover').replaceChildren(artNode(game, 'cover-image'));
   $('#detail-title').textContent = game.name;
-  $('#game-kicker').textContent = 'Windows game · ' + (game.runtime_kind === 'proton' ? 'Proton' : 'Wine');
-  $('#game-state').textContent = gameStatus(game);
-  $('#game-state').classList.toggle('running', environmentBusy(game));
+  $('#game-meta').textContent = ['Windows game', game.runtime_kind === 'proton' ? 'Proton' : 'Wine', runnerName(game), game.last_played_at ? 'played ' + relative(game.last_played_at) : 'not played yet'].join(' · ');
+  $('#game-state').replaceWith(Object.assign(statusNode(game), { id: 'game-state' }));
   $('#play').textContent = gameSessionRunning(game) ? 'Running' : 'Play';
   $('#play').disabled = !canPlay(game);
+  $('#view-log').disabled = !game.launch;
   $('#game-playtime').textContent = duration(game.play_seconds);
-  $('#last-played').textContent = relative(game.last_played_at);
-  $('#last-played').title = clock(game.last_played_at);
   const last = (game.sessions || []).find((s) => s.seconds != null);
   $('#game-last-session').textContent = last ? duration(last.seconds) : '—';
+  $('#last-played').textContent = last ? clock(last.started_at) : 'No finished sessions yet';
   $('#game-display').textContent = displayLabel(game);
   for (const tab of ['overview', 'game', 'display', 'tools']) $('#detail-' + tab).setAttribute('aria-pressed', String(detailTab === tab));
   $('#overview-panel').hidden = detailTab !== 'overview';
@@ -273,7 +335,6 @@ function renderGame() {
   $('#executable-path').textContent = game.executable;
   $('#prefix-path').textContent = game.prefix;
   $('#runtime-path').textContent = game.runtime_path || 'Not selected';
-  $('#view-log').disabled = !game.launch;
   const sessions = $('#game-session-list'); sessions.replaceChildren();
   if (!(game.sessions || []).length) sessions.append(element('li', 'No sessions yet.', 'empty'));
   for (const session of game.sessions || []) sessions.append(sessionItem(session));
@@ -282,7 +343,7 @@ function renderGame() {
   $('#save-settings').disabled = !dirty || busy || locked;
   $('#discard-settings').hidden = !dirty;
   $('#settings-note').textContent = locked ? 'Close the game and its companion apps before changing settings.' :
-    dirty ? 'Save these changes before launching or leaving this game.' : detailTab === 'display' ? 'Applied the next time the game starts.' : 'Arguments are passed directly to the game.';
+    dirty ? 'Save before launching or leaving this game.' : detailTab === 'display' ? 'Applied the next time the game starts.' : 'Arguments are passed directly to the game.';
   for (const input of $('#settings-form').querySelectorAll('input, select, textarea')) input.disabled = locked;
   const displayLocked = locked || !game.display_supported;
   for (const input of $('#display-panel').querySelectorAll('input')) input.disabled = displayLocked;
@@ -290,29 +351,32 @@ function renderGame() {
   const custom = displayMode() !== 'default';
   $('#display-width').disabled = $('#display-height').disabled = displayLocked || !custom;
   $('#display-note').textContent = game.display_supported ? 'Respawn+ sets the window mode in the game’s own settings just before it starts.' :
-    'This game keeps its window mode in its own options menu. Respawn+ can set it for Skyrim SE and Fallout 4.';
+    'This game keeps its window mode in its own options menu. Respawn+ can set it for Skyrim Special Edition and Fallout 4.';
   renderTools(game);
 }
 function renderTools(game) {
   $('#add-tool').disabled = busy || dirty;
   const list = $('#tool-list'); list.replaceChildren();
-  if (!(game.tools || []).length) list.append(element('p', 'No companion apps added for this game.', 'empty'));
+  if (!(game.tools || []).length) list.append(element('p', 'No companion apps for this game yet. Add a mod manager, script extender or trainer.', 'empty'));
   for (const tool of game.tools || []) {
     const row = element('article', undefined, 'tool-row');
     const type = { mod_manager: 'Mod manager', script_extender: 'Script extender', trainer: 'Trainer', utility: 'Utility' }[tool.kind] || 'Mod manager';
-    const status = type + ' · ' + (!tool.available ? 'Executable missing' : running(tool) ? 'Running' : tool.launch?.state === 'failed' ? 'Launch failed' : 'Ready to open');
-    row.append(element('strong', tool.name), element('span', status, running(tool) ? 'status running' : 'status'), element('p', tool.executable, 'tool-path'));
-    const actions = element('div', undefined, 'tool-actions');
-    for (const [label, handler, disabled] of [
-      [running(tool) ? 'Running' : 'Open', () => openTool(tool.id), busy || dirty || running(tool) || !tool.available || !game.runtime_path],
-      ['Edit', () => editTool(tool), busy || running(tool)],
-      ['Log', () => showLog({ type: 'tool', id: tool.id, name: tool.name }), !tool.launch],
-      ['Remove', () => removeToolDialog(tool), busy || running(tool)],
+    const text = element('div');
+    const state = element('span', !tool.available ? 'Executable missing' : running(tool) ? 'Running' : tool.launch?.state === 'failed' ? 'Last launch failed' : 'Ready', 'state');
+    state.dataset.state = running(tool) ? 'running' : !tool.available || tool.launch?.state === 'failed' ? 'attention' : 'ready';
+    const head = element('div', undefined, 'tool-head'); head.append(element('strong', tool.name), state);
+    text.append(head, element('span', type + ' · ' + tool.executable.split('/').pop(), 'muted small'));
+    const actions = element('div', undefined, 'actions');
+    for (const [label, handler, disabled, kind] of [
+      ['Log', () => showLog({ type: 'tool', id: tool.id, name: tool.name }), !tool.launch, 'text-button'],
+      ['Edit', () => editTool(tool), busy || running(tool), 'text-button'],
+      ['Remove', () => removeToolDialog(tool), busy || running(tool), 'text-button'],
+      [running(tool) ? 'Running' : 'Open', () => openTool(tool.id), busy || dirty || running(tool) || !tool.available || !game.runtime_path, 'ghost small-button'],
     ]) {
-      const button = element('button', label, label === 'Open' || label === 'Running' ? '' : 'text-button');
+      const button = element('button', label, kind);
       button.disabled = disabled; button.addEventListener('click', handler); actions.append(button);
     }
-    row.append(actions); list.append(row);
+    row.append(text, actions); list.append(row);
   }
 }
 function render() {
@@ -340,13 +404,7 @@ function route() {
   if (changed && next.name === 'game') detailTab = 'overview';
   view = next;
   render();
-  if (changed) {
-    // Entrance motion plays when a view opens, not on every background refresh.
-    const section = $('#view-' + view.name);
-    section.dataset.entering = 'true';
-    setTimeout(() => { delete section.dataset.entering; }, 900);
-    $('.main').scrollTo({ top: 0 });
-  }
+  if (changed) $('.main').scrollTo({ top: 0 });
 }
 window.addEventListener('hashchange', route);
 
@@ -365,13 +423,13 @@ async function loadGames() {
     for (const game of games) {
       const wasRunning = previous.some((old) => old.id === game.id && running(old));
       if (wasRunning && !running(game) && $('#message').textContent.startsWith('Starting ' + game.name + '.')) {
-        message(game.launch?.state === 'finished' ? game.name + ' closed successfully.' :
+        message(game.launch?.state === 'finished' ? game.name + ' closed.' :
           game.launch?.error || game.name + ' ended. Check the launch log for details.', game.launch?.state === 'failed');
       }
       const previousTools = previous.find((old) => old.id === game.id)?.tools || [];
       for (const tool of game.tools || []) {
         if (previousTools.some((old) => old.id === tool.id && running(old)) && !running(tool) && $('#message').textContent.startsWith('Starting ' + tool.name + '.')) {
-          message(tool.launch?.state === 'finished' ? tool.name + ' closed successfully.' : tool.launch?.error || tool.name + ' ended. Check its log.', tool.launch?.state === 'failed');
+          message(tool.launch?.state === 'finished' ? tool.name + ' closed.' : tool.launch?.error || tool.name + ' ended. Check its log.', tool.launch?.state === 'failed');
         }
       }
     }
@@ -395,8 +453,8 @@ async function playGame(id) {
   setBusy(true);
   try {
     const game = games.find((g) => g.id === id);
-    const launch = await invoke('launch_game', { gameId: id });
-    message('Starting ' + game.name + '. Launch log: ' + launch.log_path);
+    await invoke('launch_game', { gameId: id });
+    message('Starting ' + game.name + '.');
     await loadGames();
   } catch (error) { message(String(error), true); await loadGames().catch(() => {}); }
   finally { setBusy(false); }
@@ -414,13 +472,13 @@ async function importPath(path, name = null) {
 async function refreshEnvironment() {
   const environment = await invoke('get_environment_status');
   runtimes = environment.runtimes;
-  $('#environment-state').textContent = runtimes.length + ' runtimes';
+  $('#environment-state').textContent = runtimes.length + (runtimes.length === 1 ? ' runtime' : ' runtimes') + ' ready';
   renderRuntimes(); render();
 }
 async function showLog(target = logTarget) {
   if (!target) return;
   logTarget = target;
-  $('#log-title').textContent = target.type === 'tool' ? target.name + ' log' : 'Game launch log';
+  $('#log-title').textContent = target.type === 'tool' ? target.name + ' log' : 'Launch log';
   $('#log-content').textContent = 'Loading launch log…';
   if (!$('#log-dialog').open) $('#log-dialog').showModal();
   try { $('#log-content').textContent = await invoke(target.type === 'tool' ? 'tool_log' : 'game_log', target.type === 'tool' ? { toolId: target.id } : { gameId: target.id }); }
@@ -443,8 +501,8 @@ async function openTool(id) {
   setBusy(true);
   try {
     const tool = current()?.tools.find((t) => t.id === id);
-    const launch = await invoke('launch_tool', { toolId: id });
-    message('Starting ' + tool.name + '. Launch log: ' + launch.log_path);
+    await invoke('launch_tool', { toolId: id });
+    message('Starting ' + tool.name + '.');
     await loadGames();
   } catch (error) { message(String(error), true); await loadGames().catch(() => {}); }
   finally { setBusy(false); }
@@ -507,7 +565,7 @@ $('#browse-runtime').addEventListener('click', async () => {
 $('#play').addEventListener('click', () => { if (current()) playGame(view.id); });
 $('#continue-play').addEventListener('click', (event) => { const id = Number(event.currentTarget.dataset.gameId); if (id) playGame(id); });
 $('#search').addEventListener('input', () => { if (view.name !== 'library') location.hash = '#/library'; else renderLibrary(); });
-for (const mode of ['all', 'running']) $('#filter-' + mode).addEventListener('click', () => { filter = mode; renderLibrary(); });
+for (const button of document.querySelectorAll('[data-filter]')) button.addEventListener('click', () => { filter = button.dataset.filter; renderLibrary(); });
 $('#refresh').addEventListener('click', () => refreshEnvironment().catch((error) => message(String(error), true)));
 $('#view-log').addEventListener('click', () => showLog({ type: 'game', id: view.id }));
 $('#refresh-log').addEventListener('click', () => showLog());
@@ -520,7 +578,7 @@ $('#browse-tool').addEventListener('click', async () => {
   } catch (error) { $('#tool-error').textContent = String(error); $('#tool-error').hidden = false; }
 });
 $('#browse-tool-folder').addEventListener('click', async () => {
-  try { const path = await open({ directory: true, multiple: false, title: 'Choose the mod manager working folder' }); if (path) $('#tool-working-directory').value = path; }
+  try { const path = await open({ directory: true, multiple: false, title: 'Choose the companion app’s working folder' }); if (path) $('#tool-working-directory').value = path; }
   catch (error) { $('#tool-error').textContent = String(error); $('#tool-error').hidden = false; }
 });
 $('#tool-form').addEventListener('submit', async (event) => {
@@ -528,13 +586,13 @@ $('#tool-form').addEventListener('submit', async (event) => {
   try {
     await invoke('save_tool', { settings: { id: editingToolId, game_id: toolGameId, kind: $('#tool-kind').value, name: $('#tool-name').value, executable: $('#tool-executable').value,
       working_directory: $('#tool-working-directory').value, arguments: $('#tool-arguments').value.split('\n').filter((line) => line.length > 0) } });
-    $('#tool-dialog').close(); await loadGames(); message('Companion app profile saved.');
+    $('#tool-dialog').close(); await loadGames(); message('Companion app saved.');
   } catch (error) { $('#tool-error').textContent = String(error); $('#tool-error').hidden = false; }
   finally { $('#save-tool').disabled = false; }
 });
 $('#remove-tool-form').addEventListener('submit', async (event) => {
   event.preventDefault();
-  try { await invoke('remove_tool', { toolId: removingToolId }); $('#remove-tool-dialog').close(); await loadGames(); message('Companion app profile removed. Files were kept on disk.'); }
+  try { await invoke('remove_tool', { toolId: removingToolId }); $('#remove-tool-dialog').close(); await loadGames(); message('Companion app removed. Its files were kept on disk.'); }
   catch (error) { $('#remove-tool-error').textContent = String(error); $('#remove-tool-error').hidden = false; }
 });
 for (const button of document.querySelectorAll('[data-close]')) button.addEventListener('click', () => $('#' + button.dataset.close).close());
@@ -546,10 +604,10 @@ async function initialize() {
     if (!games.length) await scan();
   } catch (error) {
     $('#environment-state').textContent = 'Backend unavailable';
-    $('#library-summary').textContent = 'Open Respawn+ as a desktop app to load your games.';
-    $('#game-list').replaceChildren(element('p', 'The local game library requires the Respawn+ desktop backend.', 'empty'));
+    $('#library-summary').textContent = 'Open Respawn+ Launcher as a desktop app to load your games.';
+    $('#game-list').replaceChildren(element('p', 'The game library needs the Respawn+ desktop backend.', 'empty'));
     message(String(error), true); setBusy(false);
   }
 }
 initialize();
-setInterval(() => { if (ready && !busy) loadGames().catch((error) => message('Could not refresh library: ' + error, true)); }, 2500);
+setInterval(() => { if (ready && !busy) loadGames().catch((error) => message('Could not refresh the library: ' + error, true)); }, 2500);

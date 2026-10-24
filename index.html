@@ -8,151 +8,159 @@
   </head>
   <body>
     <div class="app">
-      <header class="titlebar" data-tauri-drag-region>
-        <span class="crumbs" id="crumbs" data-tauri-drag-region>RESPAWN+ // HOME</span>
+      <aside class="sidebar" aria-label="Respawn+ Launcher">
+        <a class="lockup" href="#/home" aria-label="Respawn+ Launcher home" data-tauri-drag-region>
+          <span class="lockup-icon" data-app-icon></span>
+          <span class="lockup-text"><span class="lockup-name">Respawn<span class="lockup-plus">+</span></span><span class="lockup-sub">Launcher</span></span>
+        </a>
+        <nav class="nav" aria-label="Main">
+          <a href="#/home" data-nav="home">Home</a>
+          <a href="#/library" data-nav="library">Library<span id="nav-count" class="nav-count"></span></a>
+        </nav>
+        <section class="now-running" aria-labelledby="running-title">
+          <p id="running-title" class="nav-group">Running</p>
+          <ul id="running-list"><li class="muted">Nothing running</li></ul>
+        </section>
+        <div class="sidebar-end">
+          <p class="version"><span id="version">v0.1.0</span> <span class="beta">Beta</span></p>
+          <p id="environment-state" class="muted small">Connecting…</p>
+          <button id="theme-toggle" class="ghost small-button" type="button">Light theme</button>
+        </div>
+      </aside>
+
+      <header class="topbar" data-tauri-drag-region>
+        <a id="back-library" class="back" href="#/library" hidden>← Library</a>
+        <label class="search"><span class="sr-only">Search games</span><input id="search" type="search" placeholder="Search your library" /></label>
+        <div class="topbar-actions" role="group" aria-label="Add games">
+          <button id="scan" class="ghost">Find games</button>
+          <button id="scan-folder" class="ghost">Scan folder</button>
+          <button id="add-game" class="ghost">Add game</button>
+        </div>
         <div class="window-controls">
           <button id="win-min" class="win-button" type="button" aria-label="Minimize"><span class="win-icon win-min" aria-hidden="true"></span></button>
           <button id="win-max" class="win-button" type="button" aria-label="Maximize"><span class="win-icon win-max" aria-hidden="true"></span></button>
           <button id="win-close" class="win-button close" type="button" aria-label="Close"><span class="win-icon win-close" aria-hidden="true"></span></button>
         </div>
       </header>
-      <aside class="sidebar" aria-label="Respawn+">
-        <a class="brand" href="#/home" aria-label="Respawn+ home"><span class="wordmark" aria-hidden="true">respawn</span><span class="brand-plus" data-voxel-mark></span></a>
-        <nav class="nav" aria-label="Main">
-          <a href="#/home" data-nav="home"><span class="nav-glyph glyph-home" aria-hidden="true"></span>Home</a>
-          <a href="#/library" data-nav="library"><span class="nav-glyph glyph-library" aria-hidden="true"></span>Library<span id="nav-count" class="nav-count"></span></a>
-        </nav>
-        <section class="now-running" aria-labelledby="running-title">
-          <p id="running-title" class="eyebrow">Now running</p>
-          <ul id="running-list"><li class="muted">Nothing running</li></ul>
-        </section>
-        <div class="sidebar-end">
-          <span id="environment-state" class="chip">Connecting…</span>
-          <button id="theme-toggle" class="icon-button" type="button" aria-label="Switch to dark theme"><span class="theme-glyph" aria-hidden="true"></span></button>
-        </div>
-      </aside>
 
       <main class="main">
-        <header class="topline">
-          <label class="search"><span class="sr-only">Search games</span><input id="search" type="search" placeholder="Search your library" /></label>
-          <div class="actions" role="group" aria-label="Add games">
-            <button id="scan">Find games</button>
-            <button id="scan-folder">Scan folder</button>
-            <button id="add-game" class="primary">Add game</button>
-          </div>
-        </header>
-
         <p id="message" class="message" role="status" aria-live="polite" hidden></p>
 
-        <!-- Home: the landing dashboard. -->
+        <!-- Home: what to play next, and what is running. -->
         <section id="view-home" class="view" aria-labelledby="home-title">
-          <article id="continue" class="continue">
-            <div class="continue-art" id="continue-art"></div>
-            <div class="continue-copy">
-              <p class="eyebrow" id="continue-eyebrow">Continue playing</p>
-              <h1 id="home-title">Welcome back.</h1>
-              <p id="continue-meta" class="continue-meta">Loading your library…</p>
-              <div class="continue-actions"><button id="continue-play" class="primary play" disabled>Play</button><a id="continue-details" class="button-link" href="#/library">View library</a></div>
-            </div>
-          </article>
-          <div class="stats" aria-label="Library statistics">
-            <div class="stat"><span class="stat-label">Total playtime</span><strong id="stat-playtime">—</strong></div>
-            <div class="stat"><span class="stat-label">Games</span><strong id="stat-games">—</strong></div>
-            <div class="stat"><span class="stat-label">Running now</span><strong id="stat-running">—</strong></div>
-            <div class="stat"><span class="stat-label">Companion apps</span><strong id="stat-tools">—</strong></div>
-          </div>
-          <div class="home-grid">
-            <section class="panel recent" aria-labelledby="recent-title">
-              <div class="panel-heading"><h2 id="recent-title">Recently played</h2><a class="text-link" href="#/library">All games →</a></div>
-              <div id="recent-list" class="card-row"></div>
+          <div class="title-row"><div><h1 id="home-title">Home</h1><p id="home-finding" class="subline">Loading your library…</p></div></div>
+          <div class="grid">
+            <article id="continue" class="card continue span-4">
+              <div id="continue-art" class="continue-art"></div>
+              <div class="continue-body">
+                <p id="continue-label" class="label">Continue playing</p>
+                <h2 id="continue-name">—</h2>
+                <p id="continue-meta" class="muted"></p>
+                <div class="actions"><button id="continue-play" class="primary" disabled>Play</button><a id="continue-details" class="button-link" href="#/library">Details</a></div>
+              </div>
+            </article>
+            <section class="card span-2 playtime" aria-labelledby="playtime-title">
+              <div class="card-head"><h2 id="playtime-title">Playtime, last 14 days</h2><span id="playtime-total" class="num muted"></span></div>
+              <div id="playtime-chart" class="chart"></div>
             </section>
-            <section class="panel sessions" aria-labelledby="sessions-title">
-              <div class="panel-heading"><h2 id="sessions-title">Recent sessions</h2></div>
-              <ol id="session-list" class="timeline"></ol>
+            <div class="card strip span-6" aria-label="Library totals">
+              <div><span class="label">Total playtime</span><strong id="stat-playtime" class="num">—</strong></div>
+              <div><span class="label">This week</span><strong id="stat-week" class="num">—</strong></div>
+              <div><span class="label">Games</span><strong id="stat-games" class="num">—</strong></div>
+              <div><span class="label">Companion apps</span><strong id="stat-tools" class="num">—</strong></div>
+            </div>
+            <section class="card span-4 stretch" aria-labelledby="recent-title">
+              <div class="card-head"><h2 id="recent-title">Recently played</h2><a class="text-link" href="#/library">All games</a></div>
+              <div id="recent-list" class="cover-row"></div>
+            </section>
+            <section class="card span-2 stretch" aria-labelledby="sessions-title">
+              <div class="card-head"><h2 id="sessions-title">Recent sessions</h2></div>
+              <ol id="session-list" class="sessions"></ol>
             </section>
           </div>
         </section>
 
-        <!-- Library: every game. -->
+        <!-- Library: every game, filtered by state. -->
         <section id="view-library" class="view" aria-labelledby="library-title" hidden>
-          <div class="view-heading">
-            <div><p class="eyebrow">Library</p><h1 id="library-title">All games</h1><p id="library-summary" class="muted">Loading your games…</p></div>
-            <div class="segmented" aria-label="Filter library"><button id="filter-all" aria-pressed="true">All</button><button id="filter-running" aria-pressed="false">Running</button></div>
+          <div class="title-row"><div><h1 id="library-title">Library</h1><p id="library-summary" class="subline">Loading your games…</p></div></div>
+          <div class="filters" role="group" aria-label="Filter library">
+            <button class="filter" data-filter="all" aria-pressed="true"><span class="label">All games</span><strong class="num" data-count="all">0</strong></button>
+            <button class="filter" data-filter="ready" aria-pressed="false"><span class="label">Ready to play</span><strong class="num" data-count="ready">0</strong></button>
+            <button class="filter" data-filter="running" aria-pressed="false"><span class="label">Running</span><strong class="num" data-count="running">0</strong></button>
+            <button class="filter" data-filter="setup" aria-pressed="false"><span class="label">Needs setup</span><strong class="num" data-count="setup">0</strong></button>
           </div>
           <div id="game-list" class="game-list" aria-live="polite"><p class="empty">Loading library…</p></div>
-          <div class="library-footer"><button id="enter-path" class="text-button">Add an executable by path</button><span id="shown-count"></span></div>
-          <details class="runtime-panel"><summary>Available runtimes <span id="runtime-count">—</span></summary><ul id="runtimes"></ul><button id="refresh" class="text-button">Refresh runtimes</button></details>
+          <div class="library-footer"><button id="enter-path" class="text-button">Add an executable by path</button><span id="shown-count" class="num"></span></div>
+          <details class="card runtime-panel"><summary>Available runtimes <span id="runtime-count" class="num">—</span></summary><ul id="runtimes"></ul><button id="refresh" class="text-button">Refresh runtimes</button></details>
         </section>
 
-        <!-- Game: details for one game, opened from any card. -->
+        <!-- Game: one game's page, opened from any card. -->
         <section id="view-game" class="view" aria-labelledby="detail-title" hidden>
-          <div class="game-hero">
-            <div class="game-hero-art" id="game-hero-art"></div>
-            <div class="game-hero-copy">
-              <a id="back-library" class="button-link back" href="#/library">← Library</a>
-              <p class="eyebrow" id="game-kicker">Windows game</p>
+          <header class="card object">
+            <div id="game-cover" class="object-cover"></div>
+            <div class="object-text">
               <h1 id="detail-title">Game</h1>
-              <p id="game-state" class="game-state"></p>
+              <p id="game-meta" class="muted"></p>
+              <p id="game-state" class="state"></p>
             </div>
-            <button id="play" class="primary play" disabled>Play</button>
-          </div>
-          <div class="stats game-stats" aria-label="Play statistics">
-            <div class="stat"><span class="stat-label">Total playtime</span><strong id="game-playtime">—</strong></div>
-            <div class="stat"><span class="stat-label">Last played</span><strong id="last-played">—</strong></div>
-            <div class="stat"><span class="stat-label">Last session</span><strong id="game-last-session">—</strong></div>
-            <div class="stat"><span class="stat-label">Display</span><strong id="game-display">—</strong></div>
-          </div>
-          <div class="segmented detail-tabs" aria-label="Game sections">
+            <div class="actions"><button id="view-log" class="ghost" type="button" disabled>Launch log</button><button id="play" class="primary" disabled>Play</button></div>
+          </header>
+          <div class="tabs" role="tablist" aria-label="Game sections">
             <button id="detail-overview" aria-pressed="true">Overview</button>
             <button id="detail-game" aria-pressed="false">Launch</button>
             <button id="detail-display" aria-pressed="false">Display</button>
             <button id="detail-tools" aria-pressed="false">Companion apps</button>
           </div>
 
-          <div id="overview-panel" class="detail-grid">
-            <section class="panel" aria-labelledby="game-sessions-title"><div class="panel-heading"><h2 id="game-sessions-title">Sessions</h2><button id="view-log" type="button" class="text-button" disabled>View launch log</button></div><ol id="game-session-list" class="timeline"></ol></section>
-            <section class="panel" aria-labelledby="env-title"><div class="panel-heading"><h2 id="env-title">Environment</h2></div>
-              <dl class="game-facts"><div><dt>Executable</dt><dd id="executable-path"></dd></div><div><dt>Wine prefix</dt><dd id="prefix-path"></dd></div><div><dt>Runtime</dt><dd id="runtime-path"></dd></div></dl>
+          <div id="overview-panel" class="grid">
+            <div class="card kpi span-2"><span class="label">Total playtime</span><strong id="game-playtime" class="num">—</strong></div>
+            <div class="card kpi span-2"><span class="label">Last session</span><strong id="game-last-session" class="num">—</strong><span id="last-played" class="muted small"></span></div>
+            <div class="card kpi span-2"><span class="label">Display</span><strong id="game-display">—</strong></div>
+            <section class="card span-4" aria-labelledby="game-sessions-title"><div class="card-head"><h2 id="game-sessions-title">Sessions</h2></div><ol id="game-session-list" class="sessions"></ol></section>
+            <section class="card span-2" aria-labelledby="env-title"><div class="card-head"><h2 id="env-title">Environment</h2></div>
+              <dl class="facts"><div><dt>Executable</dt><dd id="executable-path" class="path"></dd></div><div><dt>Wine prefix</dt><dd id="prefix-path" class="path"></dd></div><div><dt>Runtime</dt><dd id="runtime-path" class="path"></dd></div></dl>
             </section>
           </div>
 
-          <form id="settings-form" class="panel settings">
-            <div id="game-launch-panel" class="form-grid">
-              <h2>Launch settings</h2>
-              <label>Game name<input id="game-name" required maxlength="160" /></label>
-              <label>Runtime<select id="runtime-choice"></select></label>
-              <div id="custom-runtime" hidden><label>Runtime type<select id="custom-runtime-kind"><option value="proton">Proton (via UMU)</option><option value="wine">Wine</option></select></label><label>Runner executable<input id="custom-runtime-path" placeholder="/path/to/proton or /path/to/wine" /></label><button type="button" id="browse-runtime" class="text-button">Browse for a runner</button></div>
-              <label class="wide">Launch arguments <span class="muted">One argument per line</span><textarea id="argument-lines" rows="2" placeholder="Optional"></textarea></label>
-            </div>
-            <div id="display-panel" class="form-grid">
-              <h2>Display</h2>
-              <p id="display-note" class="muted wide">Respawn+ sets the window mode in the game’s own settings just before it starts.</p>
-              <fieldset class="mode-picker wide" id="display-modes">
-                <legend class="sr-only">Display mode</legend>
-                <label class="mode"><input type="radio" name="display-mode" value="default" /><span class="mode-icon mode-default" aria-hidden="true"></span><span class="mode-name">Game default</span><span class="mode-hint">Leave the game’s setting alone</span></label>
-                <label class="mode"><input type="radio" name="display-mode" value="fullscreen" /><span class="mode-icon mode-fullscreen" aria-hidden="true"></span><span class="mode-name">Fullscreen</span><span class="mode-hint">Exclusive, whole screen</span></label>
-                <label class="mode"><input type="radio" name="display-mode" value="borderless" /><span class="mode-icon mode-borderless" aria-hidden="true"></span><span class="mode-name">Borderless</span><span class="mode-hint">Fills the screen, fast alt-tab</span></label>
-                <label class="mode"><input type="radio" name="display-mode" value="windowed" /><span class="mode-icon mode-windowed" aria-hidden="true"></span><span class="mode-name">Windowed</span><span class="mode-hint">A movable window</span></label>
-              </fieldset>
-              <div class="resolution wide"><label>Width<input id="display-width" type="number" min="320" max="16384" inputmode="numeric" /></label><span aria-hidden="true">×</span><label>Height<input id="display-height" type="number" min="200" max="16384" inputmode="numeric" /></label><button id="use-screen" type="button" class="text-button">Use this screen</button></div>
-            </div>
-            <div class="form-actions"><button id="save-settings" type="submit" class="primary" disabled>Save settings</button><button id="discard-settings" type="button" class="text-button" hidden>Discard changes</button><p id="settings-note" class="muted">Arguments are passed directly to the game.</p></div>
+          <form id="settings-form" class="settings">
+            <section id="game-launch-panel" class="setting-row">
+              <div class="setting-label"><h2>Launch settings</h2><p class="muted">The runner and arguments every launch of this game uses. Companion apps share them.</p></div>
+              <div class="card setting-panel">
+                <label>Game name<input id="game-name" required maxlength="160" /></label>
+                <label>Runtime<select id="runtime-choice"></select></label>
+                <div id="custom-runtime" hidden><label>Runtime type<select id="custom-runtime-kind"><option value="proton">Proton (via UMU)</option><option value="wine">Wine</option></select></label><label>Runner executable<input id="custom-runtime-path" placeholder="/path/to/proton or /path/to/wine" /></label><button type="button" id="browse-runtime" class="text-button">Browse for a runner</button></div>
+                <label>Launch arguments <span class="muted">One per line</span><textarea id="argument-lines" rows="2" placeholder="Optional"></textarea></label>
+              </div>
+            </section>
+            <section id="display-panel" class="setting-row">
+              <div class="setting-label"><h2>Display</h2><p id="display-note" class="muted">Respawn+ sets the window mode in the game’s own settings just before it starts.</p></div>
+              <div class="card setting-panel">
+                <fieldset class="modes" id="display-modes">
+                  <legend class="sr-only">Display mode</legend>
+                  <label class="mode"><input type="radio" name="display-mode" value="default" /><span><strong>Game default</strong><span class="muted">Leave the game’s own setting alone</span></span></label>
+                  <label class="mode"><input type="radio" name="display-mode" value="fullscreen" /><span><strong>Fullscreen</strong><span class="muted">Exclusive, the whole screen</span></span></label>
+                  <label class="mode"><input type="radio" name="display-mode" value="borderless" /><span><strong>Borderless window</strong><span class="muted">Fills the screen, quick to switch away</span></span></label>
+                  <label class="mode"><input type="radio" name="display-mode" value="windowed" /><span><strong>Windowed</strong><span class="muted">A window you can move and resize</span></span></label>
+                </fieldset>
+                <div class="resolution"><label>Width<input id="display-width" class="num" type="number" min="320" max="16384" inputmode="numeric" /></label><span aria-hidden="true">×</span><label>Height<input id="display-height" class="num" type="number" min="200" max="16384" inputmode="numeric" /></label><button id="use-screen" type="button" class="text-button">Use this screen</button></div>
+              </div>
+            </section>
+            <div class="form-actions"><button id="discard-settings" type="button" class="text-button" hidden>Discard changes</button><p id="settings-note" class="muted">Arguments are passed directly to the game.</p><button id="save-settings" type="submit" class="primary" disabled>Save</button></div>
           </form>
 
-          <section id="tools-panel" class="panel" hidden aria-labelledby="tools-title">
-            <div class="panel-heading"><h2 id="tools-title">Companion apps</h2><button id="add-tool">Add app</button></div>
-            <p class="tool-help">Mod managers, script extenders, and trainers share this game’s runtime and Wine prefix, so they can run at the same time.</p>
-            <div id="tool-list" class="tool-grid"></div>
-            <p class="tool-help">For MO2’s virtual mods, launch the game from inside MO2.</p>
+          <section id="tools-panel" hidden aria-labelledby="tools-title">
+            <div class="card-head bare"><h2 id="tools-title">Companion apps</h2><button id="add-tool" class="ghost">Add app</button></div>
+            <p class="muted tool-help">Mod managers, script extenders and trainers share this game’s runtime and Wine prefix, so they run together in one session.</p>
+            <div id="tool-list" class="card tool-list"></div>
           </section>
         </section>
       </main>
     </div>
 
-    <dialog id="import-dialog"><form id="import-form"><div class="dialog-heading"><h2>Add a game</h2><button type="button" data-close="import-dialog" aria-label="Close add game dialog">Close</button></div><p id="import-error" role="alert" hidden></p><label>Windows executable<input id="import-path" required placeholder="/path/to/game.exe" /></label><label>Game name<input id="import-name" placeholder="Use executable name" /></label><button type="submit" class="primary">Add to library</button></form></dialog>
-    <dialog id="tool-dialog"><form id="tool-form"><div class="dialog-heading"><h2 id="tool-dialog-title">Add companion app</h2><button type="button" data-close="tool-dialog">Close</button></div><p id="tool-error" role="alert" hidden></p><label>Profile name<input id="tool-name" required maxlength="160" placeholder="Mod Organizer 2" /></label><label>App type<select id="tool-kind"><option value="mod_manager">Mod manager</option><option value="script_extender">SKSE / script extender</option><option value="trainer">Trainer</option><option value="utility">Utility</option></select></label><label>Windows executable<input id="tool-executable" required placeholder="/path/to/companion.exe" /></label><button id="browse-tool" class="text-button" type="button">Browse for executable</button><label>Working folder<input id="tool-working-directory" placeholder="Use the executable’s folder" /></label><button id="browse-tool-folder" class="text-button" type="button">Browse for working folder</button><label>Arguments <span class="muted">One argument per line</span><textarea id="tool-arguments" rows="3" placeholder="Optional"></textarea></label><p class="muted">Uses the selected game’s saved runtime and prefix.</p><button id="save-tool" class="primary" type="submit">Save profile</button></form></dialog>
-    <dialog id="remove-tool-dialog"><form id="remove-tool-form"><div class="dialog-heading"><h2>Remove manager profile?</h2><button data-close="remove-tool-dialog" type="button">Cancel</button></div><p id="remove-tool-description"></p><p class="muted">Only the Respawn+ profile and its launch history are removed. Manager files, mods, and the game prefix stay on disk.</p><p id="remove-tool-error" role="alert" hidden></p><button type="submit">Remove profile</button></form></dialog>
-    <dialog id="log-dialog"><div class="dialog-heading"><h2 id="log-title">Launch log</h2><div class="actions"><button id="refresh-log">Refresh</button><button data-close="log-dialog">Close</button></div></div><pre id="log-content"></pre></dialog>
+    <dialog id="import-dialog"><form id="import-form"><div class="dialog-heading"><h2>Add a game</h2><button type="button" class="ghost" data-close="import-dialog">Close</button></div><p id="import-error" role="alert" hidden></p><label>Windows executable<input id="import-path" required placeholder="/path/to/game.exe" /></label><label>Game name<input id="import-name" placeholder="Use the executable’s name" /></label><button type="submit" class="primary">Add to library</button></form></dialog>
+    <dialog id="tool-dialog"><form id="tool-form"><div class="dialog-heading"><h2 id="tool-dialog-title">Add companion app</h2><button type="button" class="ghost" data-close="tool-dialog">Close</button></div><p id="tool-error" role="alert" hidden></p><label>Profile name<input id="tool-name" required maxlength="160" placeholder="Mod Organizer 2" /></label><label>App type<select id="tool-kind"><option value="mod_manager">Mod manager</option><option value="script_extender">SKSE / script extender</option><option value="trainer">Trainer</option><option value="utility">Utility</option></select></label><label>Windows executable<input id="tool-executable" required placeholder="/path/to/companion.exe" /></label><button id="browse-tool" class="text-button" type="button">Browse for executable</button><label>Working folder<input id="tool-working-directory" placeholder="Use the executable’s folder" /></label><button id="browse-tool-folder" class="text-button" type="button">Browse for working folder</button><label>Arguments <span class="muted">One per line</span><textarea id="tool-arguments" rows="3" placeholder="Optional"></textarea></label><p class="muted">Uses the game’s saved runtime and prefix.</p><button id="save-tool" class="primary" type="submit">Save profile</button></form></dialog>
+    <dialog id="remove-tool-dialog"><form id="remove-tool-form"><div class="dialog-heading"><h2>Remove this profile?</h2><button type="button" class="ghost" data-close="remove-tool-dialog">Cancel</button></div><p id="remove-tool-description"></p><p class="muted">Only the Respawn+ profile and its launch history are removed. The app’s files, mods and the game prefix stay on disk.</p><p id="remove-tool-error" role="alert" hidden></p><button type="submit" class="danger">Remove profile</button></form></dialog>
+    <dialog id="log-dialog"><div class="dialog-heading"><h2 id="log-title">Launch log</h2><div class="actions"><button id="refresh-log" class="ghost">Refresh</button><button class="ghost" data-close="log-dialog">Close</button></div></div><pre id="log-content"></pre></dialog>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

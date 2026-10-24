@@ -19,7 +19,7 @@ and other required materials included in the exact upstream distributions:
 | Steam Linux Runtime | Preserve the selected runtime's component notices and provide the matching source materials required by their licenses |
 | Mines developer test game | [Simon Tatham's Portable Puzzles](https://www.chiark.greenend.org.uk/~sgtatham/puzzles/), MIT; original notice in `test-games/licenses/mines-LICENCE.txt`. The game binary is downloaded separately; a gameplay screenshot and its license are included for the library card |
 | Skyrim library artwork | Bethesda/ZeniMax artwork loaded from the official Steam CDN at runtime; not bundled or licensed under Respawn+'s MIT license. See `public/artwork/README.md` |
-| Geist and Geist Mono fonts | [Vercel Geist](https://github.com/vercel/geist-font), SIL Open Font License 1.1; bundled into the frontend from `@fontsource-variable/geist` and `@fontsource-variable/geist-mono` 5.3.0. The OFL text ships in each package's `LICENSE` |
+| Inter and Geist Mono fonts | [Inter](https://github.com/rsms/inter) and [Geist Mono](https://github.com/vercel/geist-font), SIL Open Font License 1.1; bundled into the frontend from `@fontsource-variable/inter` and `@fontsource-variable/geist-mono` 5.3.0. The OFL text ships in each package's `LICENSE` |
 
 Each release must include matching source archives/build materials for bundled
 copyleft components, including downstream patches and submodules as applicable.
