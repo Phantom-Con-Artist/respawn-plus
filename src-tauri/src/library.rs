@@ -31,6 +31,22 @@ pub struct Game {
     pub last_played_at: Option<String>,
     pub launch: Option<Launch>,
     pub tools: Vec<Tool>,
+    /// Total seconds across play sessions whose end time is known.
+    pub play_seconds: i64,
+    /// Most recent play sessions, newest first.
+    pub sessions: Vec<Session>,
+}
+
+/// A game launch, direct or through a script extender. Companion-only launches are not play.
+#[derive(Clone, Debug, Serialize)]
+pub struct Session {
+    pub started_at: String,
+    pub ended_at: Option<String>,
+    pub state: String,
+    /// Known duration; `None` while unknown (the session ended while Respawn+ was not watching).
+    pub seconds: Option<i64>,
+    /// Companion profile that started the game, when it was not launched directly.
+    pub via: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -125,7 +141,10 @@ impl Launcher {
                 let executable: String = row.get::<_, Option<String>>(2)?.unwrap_or_default();
                 let args: String = row.get(6)?;
                 let launch_id: Option<i64> = row.get(9)?;
+                let (play_seconds, sessions) = sessions_for_game(&db, row.get(0)?)?;
                 Ok(Game {
+                    play_seconds,
+                    sessions,
                     id: row.get(0)?,
                     name: row.get(1)?,
                     available: Path::new(&executable).is_file(),
@@ -480,6 +499,36 @@ fn is_running(launch: &Option<Launch>) -> bool {
     launch.as_ref().is_some_and(|l| l.state == "running")
 }
 
+/// Play sessions are direct game launches and script-extender launches. Durations come from the
+/// supervisor's recorded end time; a running session counts up to now; `unknown` rows were closed
+/// by reconciliation long after the fact, so their duration is not trusted.
+const PLAY_SESSIONS: &str = "FROM launches l LEFT JOIN tools t ON t.id=l.tool_id WHERE l.game_id=?1 AND (l.tool_id IS NULL OR t.kind='script_extender')";
+const SESSION_SECONDS: &str = "CASE WHEN l.state IN ('finished','failed') AND l.ended_at IS NOT NULL THEN CAST(ROUND((julianday(l.ended_at)-julianday(l.started_at))*86400) AS INTEGER) WHEN l.state IN ('starting','running') THEN CAST(ROUND((julianday('now')-julianday(l.started_at))*86400) AS INTEGER) END";
+const RECENT_SESSIONS: usize = 8;
+
+fn sessions_for_game(db: &Connection, game_id: i64) -> rusqlite::Result<(i64, Vec<Session>)> {
+    let total: i64 = db.query_row(
+        &format!("SELECT COALESCE(SUM({SESSION_SECONDS}),0) {PLAY_SESSIONS}"),
+        [game_id],
+        |r| r.get(0),
+    )?;
+    let mut stmt = db.prepare(&format!(
+        "SELECT l.started_at,l.ended_at,l.state,{SESSION_SECONDS},t.name {PLAY_SESSIONS} ORDER BY l.started_at DESC, l.id DESC LIMIT {RECENT_SESSIONS}"
+    ))?;
+    let sessions = stmt
+        .query_map([game_id], |r| {
+            Ok(Session {
+                started_at: r.get(0)?,
+                ended_at: r.get(1)?,
+                state: r.get(2)?,
+                seconds: r.get(3)?,
+                via: r.get(4)?,
+            })
+        })?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+    Ok((total, sessions))
+}
+
 fn tools_for_game(db: &Connection, game_id: i64) -> rusqlite::Result<Vec<Tool>> {
     let mut statement = db.prepare("SELECT t.id,t.game_id,t.name,t.executable,t.arguments_json,t.working_directory,l.id,l.state,l.exit_code,l.log_path,l.error,t.kind FROM tools t LEFT JOIN launches l ON l.id=(SELECT MAX(id) FROM launches WHERE tool_id=t.id) WHERE t.game_id=?1 ORDER BY t.name COLLATE NOCASE")?;
     let rows = statement.query_map([game_id], |r| {
@@ -633,9 +682,13 @@ fn reconcile(db: &Connection) -> Result<(), String> {
                 r.get::<_, Option<String>>(2)?,
             ))
         })
+        .map_err(|e| e.to_string())?
+        // Finish reading before writing: upgrading an open WAL read snapshot to a write fails
+        // immediately (no busy wait) if a launch supervisor committed in between.
+        .collect::<Result<Vec<_>, _>>()
         .map_err(|e| e.to_string())?;
-    for row in rows {
-        let (id, pid, token) = row.map_err(|e| e.to_string())?;
+    drop(stmt);
+    for (id, pid, token) in rows {
         if !pid
             .zip(token)
             .is_some_and(|(pid, token)| process_token(pid).as_deref() == Some(&token))
@@ -915,5 +968,63 @@ mod tests {
             std::thread::sleep(std::time::Duration::from_millis(20));
         }
         panic!("Runtime output was not written to the launch log");
+    }
+
+    #[test]
+    fn play_time_counts_game_and_script_extender_sessions_with_known_durations() {
+        let temp = tempfile::tempdir().unwrap();
+        let launcher = Launcher::at(temp.path().join("state"), temp.path().join("logs")).unwrap();
+        let exe = temp.path().join("Game.exe");
+        fs::write(&exe, b"MZtest").unwrap();
+        let game = launcher.import(&exe, None, "manual").unwrap();
+        let db = launcher.connection().unwrap();
+        db.execute("INSERT INTO tools (game_id,name,executable,kind,arguments_json,environment_json,working_directory) VALUES (?1,'SKSE','/skse.exe','script_extender','[]','{}','/')", [game.id]).unwrap();
+        let skse = db.last_insert_rowid();
+        db.execute("INSERT INTO tools (game_id,name,executable,kind,arguments_json,environment_json,working_directory) VALUES (?1,'Trainer','/t.exe','trainer','[]','{}','/')", [game.id]).unwrap();
+        let trainer = db.last_insert_rowid();
+        for (tool, state, start, end) in [
+            (
+                None,
+                "finished",
+                "2026-10-24 10:00:00",
+                Some("2026-10-24 10:30:00"),
+            ),
+            (
+                Some(skse),
+                "failed",
+                "2026-10-24 11:00:00",
+                Some("2026-10-24 12:00:00"),
+            ),
+            (
+                Some(trainer),
+                "finished",
+                "2026-10-24 11:05:00",
+                Some("2026-10-24 11:55:00"),
+            ),
+            (
+                None,
+                "unknown",
+                "2026-10-24 13:00:00",
+                Some("2026-10-24 18:00:00"),
+            ),
+        ] {
+            db.execute("INSERT INTO launches (game_id,tool_id,state,log_path,started_at,ended_at) VALUES (?1,?2,?3,'/log',?4,?5)", params![game.id, tool, state, start, end]).unwrap();
+        }
+        let game = launcher.games().unwrap().remove(0);
+        // 30 min direct + 60 min via SKSE; the trainer is not play time; unknown has no reliable end.
+        assert_eq!(game.play_seconds, 90 * 60);
+        let sessions: Vec<_> = game
+            .sessions
+            .iter()
+            .map(|s| (s.started_at.as_str(), s.seconds, s.via.as_deref()))
+            .collect();
+        assert_eq!(
+            sessions,
+            vec![
+                ("2026-10-24 13:00:00", None, None),
+                ("2026-10-24 11:00:00", Some(3600), Some("SKSE")),
+                ("2026-10-24 10:00:00", Some(1800), None),
+            ]
+        );
     }
 }
