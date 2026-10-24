@@ -36,3 +36,5 @@ node_modules/
 .playwright-mcp/
 .room-lab/
 __pycache__/
+.impeccable/review/
+.impeccable/live/
