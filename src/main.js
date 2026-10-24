@@ -420,7 +420,7 @@ function renderTools(game) {
       ['Log', () => showLog({ type: 'tool', id: tool.id, name: tool.name }), !tool.launch, 'text-button'],
       ['Edit', () => editTool(tool), busy || running(tool), 'text-button'],
       ['Remove', () => removeToolDialog(tool), busy || running(tool), 'text-button'],
-      [running(tool) ? 'Running' : startsGame(tool.kind) || gameSessionRunning(game) ? 'Open' : 'Play with game', () => openTool(tool.id), busy || dirty || running(tool) || !tool.available || !game.runtime_path, 'ghost small-button'],
+      [running(tool) ? 'Running' : startsGame(tool.kind) || gameSessionRunning(game) || game.room?.active ? 'Open' : 'Play with game', () => openTool(tool.id), busy || dirty || running(tool) || !tool.available || !game.runtime_path, 'ghost small-button'],
     ]) {
       const button = element('button', label, kind);
       button.disabled = disabled; button.addEventListener('click', handler); actions.append(button);
