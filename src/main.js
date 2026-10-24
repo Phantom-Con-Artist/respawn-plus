@@ -27,7 +27,7 @@ const THEMES = [
   { id: 'system', name: 'Match system', swatch: ['#f3f2ee', '#0a1012', '#18e6e4'] },
   { id: 'milky', name: 'Milky', swatch: ['#f3f2ee', '#141818', '#18e6e4'] },
   { id: 'night', name: 'Night', swatch: ['#0a1012', '#edf2f1', '#18e6e4'] },
-  { id: 'ashen', name: 'Ashen', swatch: ['#2d3030', '#f3f4f3', '#18e6e4'] },
+  { id: 'ashen', name: 'Ashen', swatch: ['#4a4d4c', '#f4f5f4', '#18e6e4'] },
 ];
 const systemDark = matchMedia('(prefers-color-scheme: dark)');
 function themeChoice() {
@@ -41,11 +41,12 @@ function applyTheme() {
   const choice = themeChoice();
   document.documentElement.dataset.theme = choice === 'system' ? (systemDark.matches ? 'night' : 'milky') : choice;
   for (const button of document.querySelectorAll('[data-theme-id]')) button.setAttribute('aria-checked', String(button.dataset.themeId === choice));
+  roving($('#themes'));
 }
 function renderThemes() {
   $('#themes').replaceChildren(...THEMES.map((theme) => {
     const button = element('button', undefined, 'theme');
-    button.type = 'button'; button.setAttribute('role', 'radio'); button.dataset.themeId = theme.id;
+    button.type = 'button'; button.setAttribute('role', 'radio'); button.dataset.themeId = theme.id; button.dataset.key = theme.id;
     const swatch = element('span', undefined, 'swatch');
     for (const colour of theme.swatch) { const cell = element('span'); cell.style.background = colour; swatch.append(cell); }
     button.append(swatch, element('span', theme.name));
@@ -114,6 +115,29 @@ function element(tag, text, className) {
   if (text !== undefined) node.textContent = text;
   if (className) node.className = className;
   return node;
+}
+// Radio groups take one Tab stop; the arrow keys move and choose, as in the ARIA radio pattern.
+function roving(group) {
+  if (!group) return;
+  const radios = [...group.querySelectorAll('[role="radio"]')];
+  const chosen = radios.find((r) => r.getAttribute('aria-checked') === 'true' && !r.disabled) || radios.find((r) => !r.disabled);
+  for (const radio of radios) radio.tabIndex = radio === chosen ? 0 : -1;
+}
+function onRadioKeys(event) {
+  const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
+  if (!step || !event.target.matches('[role="radio"]')) return;
+  const radios = [...event.currentTarget.querySelectorAll('[role="radio"]:not(:disabled)')];
+  const index = radios.indexOf(event.target);
+  if (index === -1) return;
+  event.preventDefault();
+  const next = radios[(index + step + radios.length) % radios.length];
+  next.focus(); next.click();
+}
+// Re-rendering a group keeps keyboard focus on the same item.
+function replaceKeepingFocus(container, nodes) {
+  const key = container.contains(document.activeElement) ? document.activeElement.dataset.key : null;
+  container.replaceChildren(...nodes);
+  if (key) container.querySelector(`[data-key="${CSS.escape(key)}"]`)?.focus();
 }
 function list(names) { return names.length < 2 ? names.join('') : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1]; }
 const KINDS = { mod_manager: 'Mod manager', script_extender: 'Script extender', trainer: 'Trainer', utility: 'Utility' };
@@ -195,7 +219,7 @@ function matches(game, name) {
   return true;
 }
 function miniStrip(game) {
-  const strip = element('span', undefined, 'mini-strip');
+  const strip = element('span', undefined, 'mini-strip' + (gameRunning(game) ? ' live' : ''));
   strip.title = setupSentence(game);
   strip.setAttribute('role', 'img'); strip.setAttribute('aria-label', setupSentence(game));
   const start = element('i', undefined, 'start'); strip.append(start);
@@ -214,7 +238,7 @@ function gameRow(game) {
   time.append(element('strong', game.play_seconds ? duration(game.play_seconds) : '0 m'), document.createTextNode(relative(game.last_played_at)));
   link.append(thumb, text, miniStrip(game), time);
   const playCell = element('span', undefined, 'row-play');
-  const play = element('button', gameRunning(game) ? 'Running' : 'Play', 'button');
+  const play = element('button', 'Play', 'button');
   play.type = 'button'; play.disabled = !canPlay(game);
   play.setAttribute('aria-label', (gameRunning(game) ? game.name + ' is running' : 'Play ' + game.name));
   play.addEventListener('click', () => playGame(game.id));
@@ -249,14 +273,15 @@ function renderLibrary() {
 }
 
 // ---------- Game page ----------
-function block({ kind, name, state, role, checked, disabled, onClick, missing }) {
+function block({ key, kind, name, state, role, checked, disabled, onClick, missing }) {
   const button = element('button', undefined, 'block' + (missing ? ' missing' : ''));
-  button.type = 'button';
+  button.type = 'button'; button.dataset.key = key; button.title = name + ': ' + state.text;
   button.setAttribute(role === 'radio' ? 'role' : 'data-role', role);
   if (role === 'radio') button.setAttribute('aria-checked', String(checked)); else button.setAttribute('aria-pressed', String(checked));
   button.disabled = disabled;
   const stateNode = element('span', undefined, 'block-state');
-  if (state.running) stateNode.append(element('i', undefined, 'running-dot'));
+  // The dot marks what is open; the header says "Running" once for the whole room.
+  if (state.running) { stateNode.append(element('i', undefined, 'running-dot')); button.setAttribute('aria-description', 'open'); }
   stateNode.append(document.createTextNode(state.text));
   button.append(element('span', kind, 'block-kind'), element('span', name, 'block-name'), stateNode);
   button.addEventListener('click', onClick);
@@ -266,33 +291,33 @@ function renderStrip(game) {
   const locked = busy || roomInUse(game);
   const start = starter(game);
   const startBlocks = [block({
-    kind: 'Game', name: game.name, role: 'radio', checked: !start, disabled: locked,
-    state: { text: !start ? 'Starts directly' : 'Not used', running: running(game) },
+    key: 'game', kind: 'Game', name: game.name, role: 'radio', checked: !start, disabled: locked,
+    state: { text: !start ? 'Starts directly' : 'Via ' + start.name, running: gameRunning(game) },
     onClick: () => setStarter(game, null),
   })];
   for (const tool of starters(game)) startBlocks.push(block({
-    kind: KINDS[tool.kind], name: tool.name, role: 'radio', checked: start?.id === tool.id, disabled: locked || !tool.available, missing: !tool.available,
-    state: { text: !tool.available ? 'Executable missing' : running(tool) ? 'Running' : start?.id === tool.id ? 'Starts the game' : 'Not used', running: running(tool) },
+    key: tool.id, kind: KINDS[tool.kind], name: tool.name, role: 'radio', checked: start?.id === tool.id, disabled: locked || !tool.available, missing: !tool.available,
+    state: { text: !tool.available ? 'Executable missing' : start?.id === tool.id ? 'Starts the game' : 'Not chosen', running: running(tool) },
     onClick: () => setStarter(game, tool.id),
   }));
-  $('#start-blocks').replaceChildren(...startBlocks);
+  replaceKeepingFocus($('#start-blocks'), startBlocks);
+  roving($('#start-blocks'));
   const withBlocks = attachers(game).map((tool) => block({
-    kind: KINDS[tool.kind], name: tool.name, role: 'switch', checked: tool.with_game, disabled: busy || !tool.available, missing: !tool.available,
-    state: { text: !tool.available ? 'Executable missing' : running(tool) ? 'Running' : tool.with_game ? 'On' : 'Off', running: running(tool) },
+    key: tool.id, kind: KINDS[tool.kind], name: tool.name, role: 'switch', checked: tool.with_game, disabled: busy || !tool.available, missing: !tool.available,
+    state: { text: !tool.available ? 'Executable missing' : tool.with_game ? 'On' : 'Off', running: running(tool) },
     onClick: () => toggleWithGame(tool),
   }));
-  const add = element('button', undefined, 'block add'); add.type = 'button'; add.disabled = busy;
+  const add = element('button', undefined, 'block add'); add.type = 'button'; add.disabled = busy; add.dataset.key = 'add';
   const plus = element('span', undefined, 'icon'); plus.innerHTML = icon('plus');
   add.append(plus, element('span', 'Add app'));
   add.addEventListener('click', () => editTool());
-  $('#with-blocks').replaceChildren(...withBlocks, add);
-  const isRunning = gameRunning(game);
+  replaceKeepingFocus($('#with-blocks'), [...withBlocks, add]);
+  const open = !!game.room?.active;
+  $('#play').hidden = open;
   $('#play').disabled = !canPlay(game);
-  $('#play').dataset.running = String(isRunning);
-  $('#play-label').textContent = isRunning ? 'Running' : 'Play';
-  $('#stop-room').hidden = !game.room?.active;
+  $('#stop-room').hidden = !open;
   $('#stop-room').disabled = busy;
-  $('#setup-sentence').textContent = isRunning ? game.name + ' is running. Trainers and utilities you open now join it.' : setupSentence(game);
+  $('#setup-sentence').textContent = gameRunning(game) ? 'Trainers and utilities you open now join this room.' : setupSentence(game);
 }
 function renderChart(game) {
   const days = [];
@@ -344,7 +369,7 @@ function renderDashboard(game) {
     const item = element('li');
     const live = session.state === 'running' || session.state === 'starting';
     item.append(element('span', clock(session.started_at) + (session.via ? ' · ' + session.via : ''), 'when'),
-      element('span', live ? 'Playing now' : duration(session.seconds), 'num' + (live ? ' live' : '')));
+      element('span', live ? 'Now' : duration(session.seconds), 'num' + (live ? ' live' : '')));
     if (session.seconds == null && !live) item.lastChild.title = 'This session ended while Vessel was closed, so its length is unknown';
     return item;
   });
@@ -565,10 +590,11 @@ async function toggleWithGame(tool) {
 let launch = null;
 function showLaunch(game) {
   const start = starter(game);
-  const steps = [{ id: 'room', label: 'Preparing ' + game.name + '’s room' }];
-  steps.push({ id: 'start', label: start ? 'Starting ' + start.name : 'Starting ' + game.name });
-  for (const tool of companionsOn(game).filter((t) => !running(t))) steps.push({ id: 'tool-' + tool.id, label: 'Opening ' + tool.name, tool: tool.id });
-  launch = { gameId: game.id, steps, states: { room: 'active' }, started: Date.now(), readySince: null, done: false, failed: false };
+  // The room is prepared under the first block, so the screen shows the same blocks as the strip.
+  const steps = [{ id: 'room', hidden: true }];
+  steps.push({ id: 'start', kind: start ? KINDS[start.kind] : 'Game', name: start ? start.name : game.name });
+  for (const tool of companionsOn(game).filter((t) => !running(t))) steps.push({ id: 'tool-' + tool.id, kind: KINDS[tool.kind], name: tool.name, tool: tool.id });
+  launch = { gameId: game.id, steps, states: { room: 'active', start: 'active' }, started: Date.now(), readySince: null, done: false, failed: false };
   $('#launch-title').textContent = 'Starting ' + game.name;
   $('#launch-note').textContent = 'The first start of a room can take a minute while Proton prepares it.';
   $('#launch-log').hidden = true;
@@ -578,7 +604,16 @@ function showLaunch(game) {
 }
 function drawLaunch() {
   if (!launch) return;
-  $('#launch-steps').replaceChildren(...launch.steps.map((step) => { const item = element('li', step.label); item.dataset.state = launch.states[step.id] || 'waiting'; return item; }));
+  const words = { waiting: 'Waiting', active: 'Starting', done: 'Open', failed: 'Did not start' };
+  $('#launch-steps').replaceChildren(...launch.steps.filter((step) => !step.hidden).map((step) => {
+    let state = launch.states[step.id] || 'waiting';
+    if (step.id === 'start' && launch.states.room === 'failed') state = 'failed';
+    const text = step.id === 'start' && state === 'active' && launch.states.room !== 'done' ? 'Preparing room' : words[state];
+    const item = element('li');
+    item.dataset.state = state;
+    item.append(element('span', step.kind, 'block-kind'), element('span', step.name, 'block-name'), element('span', text, 'block-state'));
+    return item;
+  }));
 }
 function hideLaunch() { launch = null; $('#launch').hidden = true; $('#launch').classList.remove('busy'); }
 function failLaunch(stepId, text) {
@@ -612,7 +647,7 @@ async function updateLaunch() {
   if (!pending) {
     launch.done = true;
     $('#launch').classList.remove('busy');
-    const failedTools = launch.steps.filter((s) => launch.states[s.id] === 'failed').map((s) => s.label.replace('Opening ', ''));
+    const failedTools = launch.steps.filter((s) => launch.states[s.id] === 'failed').map((s) => s.name);
     $('#launch-title').textContent = game.name + ' is running';
     $('#launch-note').textContent = failedTools.length ? list(failedTools) + ' did not open. Its log in Companion apps says why.' : 'Its windows open on your desktop. Vessel stays here when you need it.';
     setTimeout(() => { if (launch?.done) hideLaunch(); }, failedTools.length ? 8000 : 3000);
@@ -692,6 +727,7 @@ $('#import-form').addEventListener('submit', async (event) => {
 $('#search').addEventListener('input', renderLibrary);
 for (const tab of document.querySelectorAll('[data-filter]')) tab.addEventListener('click', () => { filter = tab.dataset.filter; renderLibrary(); });
 for (const tab of document.querySelectorAll('[data-tab]')) tab.addEventListener('click', () => { gameTab = tab.dataset.tab; roomFormGame = null; renderGame(); });
+for (const group of ['#start-blocks', '#themes']) $(group).addEventListener('keydown', onRadioKeys);
 $('#play').addEventListener('click', () => { if (current()) playGame(view.id); });
 $('#stop-room').addEventListener('click', async () => {
   const game = current(); if (!game || busy) return;

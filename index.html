@@ -76,13 +76,13 @@
                 <p id="start-label" class="strip-label">Start with</p>
                 <div id="start-blocks" class="blocks"></div>
               </div>
-              <div class="strip-group" aria-labelledby="with-label">
+              <div class="strip-group grow" aria-labelledby="with-label">
                 <p id="with-label" class="strip-label">Opens with the game</p>
                 <div id="with-blocks" class="blocks"></div>
               </div>
               <div class="strip-play">
                 <button id="play" class="play" type="button" disabled><span class="icon" data-icon="play" aria-hidden="true"></span><span id="play-label">Play</span></button>
-                <button id="stop-room" class="button danger" type="button" hidden>Stop room</button>
+                <button id="stop-room" class="button danger stop" type="button" hidden>Stop room</button>
               </div>
             </div>
             <p id="setup-sentence" class="setup-sentence"></p>
@@ -221,7 +221,7 @@
       <div class="launch-body">
         <span class="launch-mark" data-app-icon></span>
         <h2 id="launch-title">Starting</h2>
-        <ol id="launch-steps" class="launch-steps"></ol>
+        <ol id="launch-steps" class="launch-steps" aria-live="polite"></ol>
         <p id="launch-note" class="launch-note"></p>
         <div class="actions"><button id="launch-log" class="button" type="button" hidden>Launch log</button><button id="launch-hide" class="button" type="button">Back to Vessel</button></div>
       </div>
